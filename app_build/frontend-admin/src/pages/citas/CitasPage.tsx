@@ -137,6 +137,7 @@ export const CitasPage: React.FC = () => {
         columns={columns}
         data={citas}
         loading={loading}
+        maxRows={5}
       />
 
       <Modal

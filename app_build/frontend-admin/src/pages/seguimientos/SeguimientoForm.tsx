@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { seguimientoService } from '../../services/seguimientos.service';
 import { pacienteService } from '../../services/pacientes.service';
 import { tratamientoService } from '../../services/tratamientos.service';
@@ -12,11 +12,25 @@ import type { Paciente, Tratamiento, Medicamento } from '../../types/models';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
+/** Row shape for treatments added to the form */
+interface FilaTratamiento {
+  id_tratamiento: number;
+  nombre: string;
+  precio: number;
+}
+
+/** Row shape for medications added to the form */
+interface FilaMedicamento {
+  id_medicamento: number;
+  nombre: string;
+  precio_unitario: number;
+  stock_disponible: number;
+  cantidad: number;
+}
+
 type FormValues = {
   fecha: string;
   hora: string;
-  tratamientos: { id_tratamiento: number }[];
-  medicamentos: { id_medicamento: number, cantidad: number }[];
 };
 
 export const SeguimientoForm: React.FC = () => {
@@ -24,29 +38,21 @@ export const SeguimientoForm: React.FC = () => {
   const location = useLocation();
   const initialPacienteId = location.state?.pacienteId || '';
 
-  const { register, control, handleSubmit, watch } = useForm<FormValues>({
+  const { register, handleSubmit } = useForm<FormValues>({
     defaultValues: {
       fecha: new Date().toISOString().split('T')[0],
       hora: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      tratamientos: [],
-      medicamentos: []
     }
-  });
-
-  const { fields: tratFields, append: appendTrat, remove: removeTrat } = useFieldArray({
-    control,
-    name: 'tratamientos'
-  });
-
-  const { fields: medFields, append: appendMed, remove: removeMed } = useFieldArray({
-    control,
-    name: 'medicamentos'
   });
 
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [tratamientosDisponibles, setTratamientosDisponibles] = useState<Tratamiento[]>([]);
   const [medicamentosDisponibles, setMedicamentosDisponibles] = useState<Medicamento[]>([]);
-  
+
+  // Row lists — own React state for immediate reactivity
+  const [filasTratamiento, setFilasTratamiento] = useState<FilaTratamiento[]>([]);
+  const [filasMedicamento, setFilasMedicamento] = useState<FilaMedicamento[]>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -71,56 +77,97 @@ export const SeguimientoForm: React.FC = () => {
     });
   }, [initialPacienteId, fetchPaciente, fetchTratamientos, fetchMedicamentos, navigate]);
 
-  // Watch to calculate total
-  const watchTrats = watch('tratamientos');
-  const watchMeds = watch('medicamentos');
+  // ── Derived total — pure calculation, no own state ──
+  const total = useMemo(() => {
+    const tratSum = filasTratamiento.reduce((sum, f) => sum + f.precio, 0);
+    const medSum = filasMedicamento.reduce(
+      (sum, f) => sum + (f.precio_unitario * f.cantidad), 0
+    );
+    const result = tratSum + medSum;
+    return isNaN(result) ? '0.00' : result.toFixed(2);
+  }, [filasTratamiento, filasMedicamento]);
 
-  const [total, setTotal] = useState('0.00');
-
-  useEffect(() => {
-    let sum = 0;
-    watchTrats.forEach(t => {
-      if (t.id_tratamiento) {
-        const trat = tratamientosDisponibles.find(x => x.id === Number(t.id_tratamiento));
-        if (trat) sum += parseFloat(trat.precio);
-      }
-    });
-
-    watchMeds.forEach(m => {
-      if (m.id_medicamento && m.cantidad) {
-        const med = medicamentosDisponibles.find(x => x.id === Number(m.id_medicamento));
-        if (med) sum += (parseFloat(med.precio) * Number(m.cantidad));
-      }
-    });
-
-    setTotal(sum.toFixed(2));
-  }, [watchTrats, watchMeds, tratamientosDisponibles, medicamentosDisponibles]);
-
+  // ── Selectors for dropdowns ──
   const [tratSeleccionado, setTratSeleccionado] = useState('');
   const [medSeleccionado, setMedSeleccionado] = useState('');
 
   const agregarTratamiento = () => {
     if (!tratSeleccionado) return;
-    if (tratFields.some(t => t.id_tratamiento === Number(tratSeleccionado))) {
+    const id = Number(tratSeleccionado);
+    if (filasTratamiento.some(f => f.id_tratamiento === id)) {
       toast.error('Este tratamiento ya fue agregado.');
       return;
     }
-    appendTrat({ id_tratamiento: Number(tratSeleccionado) });
+    const trat = tratamientosDisponibles.find(t => t.id === id);
+    if (!trat) return;
+    setFilasTratamiento(prev => [
+      ...prev,
+      {
+        id_tratamiento: trat.id,
+        nombre: trat.nombre,
+        precio: parseFloat(trat.precio),
+      }
+    ]);
     setTratSeleccionado('');
+  };
+
+  const quitarTratamiento = (index: number) => {
+    setFilasTratamiento(prev => prev.filter((_, i) => i !== index));
   };
 
   const agregarMedicamento = () => {
     if (!medSeleccionado) return;
-    if (medFields.some(m => m.id_medicamento === Number(medSeleccionado))) {
+    const id = Number(medSeleccionado);
+    if (filasMedicamento.some(f => f.id_medicamento === id)) {
       toast.error('Este medicamento ya fue agregado.');
       return;
     }
-    appendMed({ id_medicamento: Number(medSeleccionado), cantidad: 1 });
+    const med = medicamentosDisponibles.find(m => m.id === id);
+    if (!med) return;
+    setFilasMedicamento(prev => [
+      ...prev,
+      {
+        id_medicamento: med.id,
+        nombre: med.nombre,
+        precio_unitario: parseFloat(med.precio),
+        stock_disponible: med.cantidad,
+        cantidad: 1,
+      }
+    ]);
     setMedSeleccionado('');
   };
 
+  const quitarMedicamento = (index: number) => {
+    setFilasMedicamento(prev => prev.filter((_, i) => i !== index));
+  };
+
+  /**
+   * Handles quantity onChange for a medication row.
+   * Converts to int, clamps to [1, stock_disponible], updates state immediately.
+   */
+  const handleCantidadChange = (index: number, rawValue: string) => {
+    setFilasMedicamento(prev => {
+      const next = [...prev];
+      const fila = { ...next[index] };
+
+      let parsed = parseInt(rawValue, 10);
+
+      if (isNaN(parsed) || parsed < 1) {
+        parsed = 1;
+      }
+
+      if (parsed > fila.stock_disponible) {
+        parsed = fila.stock_disponible;
+      }
+
+      fila.cantidad = parsed;
+      next[index] = fila;
+      return next;
+    });
+  };
+
   const onSubmit = async (data: FormValues) => {
-    if (data.tratamientos.length === 0 && data.medicamentos.length === 0) {
+    if (filasTratamiento.length === 0 && filasMedicamento.length === 0) {
       setSaveError("Debe agregar al menos un tratamiento o medicamento.");
       return;
     }
@@ -138,14 +185,14 @@ export const SeguimientoForm: React.FC = () => {
       const segCreado = await seguimientoService.create(seguimientoPayload);
       const segId = segCreado.id!;
 
-      // 2. Crear Tratamientos
-      for (const t of data.tratamientos) {
-        await seguimientoService.addDetalle(segId, { id_tratamiento: t.id_tratamiento });
+      // 2. Crear detalles de Tratamientos
+      for (const f of filasTratamiento) {
+        await seguimientoService.addDetalle(segId, { id_tratamiento: f.id_tratamiento });
       }
 
-      // 3. Crear Medicamentos
-      for (const m of data.medicamentos) {
-        await seguimientoService.addDetalle(segId, { id_medicamento: m.id_medicamento, cantidad: m.cantidad });
+      // 3. Crear detalles de Medicamentos
+      for (const f of filasMedicamento) {
+        await seguimientoService.addDetalle(segId, { id_medicamento: f.id_medicamento, cantidad: f.cantidad });
       }
 
       toast.success('Seguimiento registrado exitosamente.');
@@ -216,30 +263,27 @@ export const SeguimientoForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Sección Tratamientos */}
+        {/* ── Sección Tratamientos ── */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Tratamientos</h2>
-          
-          {tratFields.length > 0 && (
+
+          {filasTratamiento.length > 0 && (
             <div className="mb-4 space-y-2">
-              {tratFields.map((field, index) => {
-                const tr = tratamientosDisponibles.find(x => x.id === Number(watchTrats[index]?.id_tratamiento));
-                return (
-                  <div key={field.id} className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200">
-                    <div>
-                      <span className="font-medium text-gray-900">{tr?.nombre}</span>
-                      <span className="ml-4 text-sm text-gray-500">${tr?.precio}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeTrat(index)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+              {filasTratamiento.map((fila, index) => (
+                <div key={fila.id_tratamiento} className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200">
+                  <div>
+                    <span className="font-medium text-gray-900">{fila.nombre}</span>
+                    <span className="ml-4 text-sm text-gray-500">${fila.precio.toFixed(2)}</span>
                   </div>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => quitarTratamiento(index)}
+                    className="text-red-600 hover:text-red-800 p-1"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -265,44 +309,50 @@ export const SeguimientoForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Sección Medicamentos */}
+        {/* ── Sección Medicamentos ── */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Medicamentos Entregados</h2>
-          
-          {medFields.length > 0 && (
+
+          {filasMedicamento.length > 0 && (
             <div className="mb-4 space-y-2">
-              {medFields.map((field, index) => {
-                const mId = watchMeds[index]?.id_medicamento;
-                const mQty = watchMeds[index]?.cantidad;
-                const med = medicamentosDisponibles.find(x => x.id === Number(mId));
-                const subtotal = med ? (parseFloat(med.precio) * Number(mQty)).toFixed(2) : '0.00';
+              {filasMedicamento.map((fila, index) => {
+                const subtotal = (fila.precio_unitario * fila.cantidad).toFixed(2);
 
                 return (
-                  <div key={field.id} className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200 gap-4">
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-900">{med?.nombre}</span>
-                      <span className="ml-4 text-sm text-gray-500">${med?.precio} c/u</span>
+                  <div key={fila.id_medicamento} className="flex flex-col bg-gray-50 p-3 rounded border border-gray-200">
+                    <div className="flex justify-between items-center gap-4">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-900">{fila.nombre}</span>
+                        <span className="ml-4 text-sm text-gray-500">${fila.precio_unitario.toFixed(2)} c/u</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-600">Cant:</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={fila.stock_disponible}
+                          value={fila.cantidad}
+                          onChange={(e) => handleCantidadChange(index, e.target.value)}
+                          className="w-20 border border-gray-300 rounded-md p-1 text-center"
+                        />
+                      </div>
+                      <div className="w-24 text-right font-medium text-gray-900">
+                        ${subtotal}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => quitarMedicamento(index)}
+                        className="text-red-600 hover:text-red-800 p-1"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Cant:</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max={med?.cantidad}
-                        {...register(`medicamentos.${index}.cantidad` as const, { required: true, min: 1 })}
-                        className="w-20 border border-gray-300 rounded-md p-1 text-center"
-                      />
-                    </div>
-                    <div className="w-24 text-right font-medium text-gray-900">
-                      ${subtotal}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeMed(index)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+                    {/* Stock warning */}
+                    {fila.cantidad >= fila.stock_disponible && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Stock disponible: {fila.stock_disponible} unidades.
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -331,7 +381,7 @@ export const SeguimientoForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Resumen Final */}
+        {/* ── Resumen Final ── */}
         <div className="bg-gray-800 shadow rounded-lg p-6 text-white flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold">Total a Cobrar</h3>

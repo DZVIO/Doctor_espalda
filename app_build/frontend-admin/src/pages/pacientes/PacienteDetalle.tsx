@@ -149,6 +149,7 @@ export const PacienteDetalle: React.FC = () => {
               data={seguimientos as any}
               loading={fetchingSeg}
               emptyMessage="No hay historial de seguimientos registrados"
+              maxRows={5}
             />
           </div>
 
@@ -170,6 +171,7 @@ export const PacienteDetalle: React.FC = () => {
               data={citas}
               loading={fetchingCitas}
               emptyMessage="No hay citas agendadas"
+              maxRows={5}
             />
           </div>
         </div>
