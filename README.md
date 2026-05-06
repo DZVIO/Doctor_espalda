@@ -41,16 +41,3 @@ tratamientos ──── catálogo de servicios ofrecidos
 medicamentos ──── inventario con control de stock automático
 seguimiento ───── bitácora inmutable: paciente + tratamiento + medicamento (opcional)
 ```
-
-### Reglas de Negocio Clave
-
-- **Solapamiento de citas**: El backend rechaza citas que se crucen en horario para la misma fecha.
-- **Stock automático**: Al registrar un seguimiento con medicamento, el stock se decrementa. Si llega a 0, el medicamento pasa a estado `inactivo`.
-- **Seguimientos inmutables**: Solo se pueden crear y leer; no se editan ni eliminan.
-- **Restricciones de eliminación**: No se puede borrar un paciente, tratamiento o medicamento que tenga seguimientos asociados.
-
----
-
-## 📝 Licencia
-
-Este proyecto es de uso privado. Todos los derechos reservados.
