@@ -63,14 +63,25 @@ export interface Agendamiento {
   updated_at: string;
 }
 
+export interface DetalleSeguimiento {
+  id?: number;
+  id_venta?: number;
+  id_tratamiento?: number | null;
+  id_medicamento?: number | null;
+  cantidad: number;
+  tratamiento_detalle?: { id: number; nombre: string; precio: string };
+  medicamento_detalle?: { id: number; nombre: string; precio: string };
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Seguimiento {
-  id: number;
+  id?: number;
   fecha: string;
   hora: string;
-  precio: string;
+  total?: string;
   id_paciente: number;
-  id_tratamiento: number;
-  id_medicamento: number | null;
-  created_at: string;
-  updated_at: string;
+  detalles?: DetalleSeguimiento[];
+  created_at?: string;
+  updated_at?: string;
 }

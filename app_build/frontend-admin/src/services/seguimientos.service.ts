@@ -14,4 +14,12 @@ export const seguimientoService = {
     const response = await api.post<Seguimiento>('/seguimientos/', data);
     return response.data;
   },
+  addDetalle: async (seguimientoId: number, data: any) => {
+    const response = await api.post(`/seguimientos/${seguimientoId}/detalles/`, data);
+    return response.data;
+  },
+  removeDetalle: async (seguimientoId: number, detalleId: number) => {
+    const response = await api.delete(`/seguimientos/${seguimientoId}/detalles/${detalleId}/`);
+    return response.data;
+  },
 };

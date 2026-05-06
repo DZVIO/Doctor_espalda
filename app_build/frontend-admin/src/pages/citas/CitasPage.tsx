@@ -13,6 +13,7 @@ export const CitasPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCita, setSelectedCita] = useState<Agendamiento | null>(null);
   const [dateFilter, setDateFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const navigate = useNavigate();
   const { loading, request } = useApi();
@@ -21,11 +22,12 @@ export const CitasPage: React.FC = () => {
   const fetchCitas = useCallback(async () => {
     const params: any = {};
     if (dateFilter) params.fecha = dateFilter;
+    if (searchTerm) params.search = searchTerm;
     
     request(agendamientoService.getAll(params), {
       onSuccess: (data) => setCitas(data),
     });
-  }, [request, dateFilter]);
+  }, [request, dateFilter, searchTerm]);
 
   useEffect(() => {
     fetchCitas();
@@ -97,17 +99,37 @@ export const CitasPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex items-center space-x-4">
-        <label htmlFor="date" className="text-sm font-medium text-gray-700">Filtrar por fecha:</label>
-        <input
-          type="date"
-          id="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
-        />
-        {dateFilter && (
-          <button onClick={() => setDateFilter('')} className="text-sm text-blue-600 hover:underline">Ver todas</button>
+      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row items-center gap-4">
+        <div className="flex items-center space-x-2">
+          <label htmlFor="search" className="text-sm font-medium text-gray-700">Buscar paciente:</label>
+          <input
+            type="text"
+            id="search"
+            placeholder="Nombre, cédula, etc..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <label htmlFor="date" className="text-sm font-medium text-gray-700">Filtrar por fecha:</label>
+          <input
+            type="date"
+            id="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+          />
+        </div>
+
+        {(dateFilter || searchTerm) && (
+          <button 
+            onClick={() => { setDateFilter(''); setSearchTerm(''); }} 
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Limpiar filtros
+          </button>
         )}
       </div>
 

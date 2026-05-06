@@ -52,6 +52,7 @@ class MedicamentoServiceTest(TestCase):
 
     def test_delete_sets_null_on_seguimiento(self):
         from .services import MedicamentoService
+        from apps.treatments.models import DetalleSeguimiento
         paciente = Paciente.objects.create(
             nombre='Juan', apellido='Perez', cedula='123456',
         )
@@ -65,11 +66,14 @@ class MedicamentoServiceTest(TestCase):
         )
         seg = Seguimiento.objects.create(
             fecha='2025-01-01', hora='10:00:00',
-            precio=Decimal('80.00'),
             id_paciente=paciente,
+        )
+        detalle = DetalleSeguimiento.objects.create(
+            id_venta=seg,
             id_tratamiento=tratamiento,
             id_medicamento=med,
+            cantidad=1
         )
         MedicamentoService.delete_medicamento(med)
-        seg.refresh_from_db()
-        self.assertIsNone(seg.id_medicamento)
+        detalle.refresh_from_db()
+        self.assertIsNone(detalle.id_medicamento)

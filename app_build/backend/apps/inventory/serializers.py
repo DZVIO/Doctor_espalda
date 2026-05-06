@@ -3,6 +3,13 @@ from .models import Medicamento
 
 
 class MedicamentoSerializer(serializers.ModelSerializer):
+    def validate(self, data):
+        if 'cantidad' in data and data['cantidad'] < 0:
+            raise serializers.ValidationError({"error": "El campo cantidad no puede ser negativo o cero."})
+        if 'precio' in data and data['precio'] <= 0:
+            raise serializers.ValidationError({"error": "El campo precio no puede ser negativo o cero."})
+        return data
+
     class Meta:
         model = Medicamento
         fields = [

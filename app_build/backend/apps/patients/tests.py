@@ -44,17 +44,22 @@ class PacienteServiceTest(TestCase):
             PacienteService.delete_paciente(p)
 
     def test_delete_with_seguimiento_fails(self):
+        from apps.treatments.models import DetalleSeguimiento
         p = Paciente.objects.create(
             nombre='Sofia', apellido='Torres', cedula='111000',
         )
         t = Tratamiento.objects.create(
             nombre='Electroterapia', precio=Decimal('70.00'),
         )
-        Seguimiento.objects.create(
+        seg = Seguimiento.objects.create(
             fecha='2025-08-01', hora='10:00:00',
-            precio=Decimal('70.00'),
             id_paciente=p,
+        )
+        DetalleSeguimiento.objects.create(
+            id_venta=seg,
             id_tratamiento=t,
+            cantidad=1
         )
         with self.assertRaises(ValueError):
             PacienteService.delete_paciente(p)
+

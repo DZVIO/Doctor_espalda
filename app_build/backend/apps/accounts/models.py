@@ -24,6 +24,7 @@ class Administrador(AbstractBaseUser):
     usuario = models.CharField(max_length=255)
     tipo_documento = models.CharField(max_length=3, choices=TIPO_DOCUMENTO_CHOICES)
     numero_documento = models.CharField(max_length=255, unique=True)
+    region = models.CharField(max_length=10, default='+57', blank=True)
     telefono = models.CharField(max_length=255, null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)

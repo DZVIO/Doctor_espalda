@@ -1,11 +1,10 @@
 from django.test import TestCase
 from decimal import Decimal
 
-from .models import Tratamiento, Seguimiento
-from .services import TratamientoService, SeguimientoService
+from .models import Tratamiento, Seguimiento, DetalleSeguimiento
+from .services import TratamientoService, SeguimientoService, DetalleSeguimientoService
 from apps.patients.models import Paciente
 from apps.inventory.models import Medicamento
-
 
 class TratamientoServiceTest(TestCase):
 
@@ -35,17 +34,19 @@ class TratamientoServiceTest(TestCase):
         t = Tratamiento.objects.create(
             nombre='Terapia', precio=Decimal('50.00'),
         )
-        Seguimiento.objects.create(
+        seg = Seguimiento.objects.create(
             fecha='2025-06-01', hora='09:00:00',
-            precio=Decimal('50.00'),
             id_paciente=paciente,
+        )
+        DetalleSeguimiento.objects.create(
+            id_venta=seg,
             id_tratamiento=t,
+            cantidad=1
         )
         with self.assertRaises(ValueError):
             TratamientoService.delete_tratamiento(t)
 
-
-class SeguimientoServiceTest(TestCase):
+class DetalleSeguimientoServiceTest(TestCase):
 
     def setUp(self):
         self.paciente = Paciente.objects.create(
@@ -58,29 +59,32 @@ class SeguimientoServiceTest(TestCase):
             nombre='Crema', presentacion='Tubo', unidad_medida='g',
             cantidad=2, precio=Decimal('30.00'),
         )
+        self.seguimiento = Seguimiento.objects.create(
+            fecha='2025-07-01', hora='10:00:00', id_paciente=self.paciente
+        )
 
-    def test_create_success_with_stock_decrement(self):
-        seg = SeguimientoService.create_seguimiento({
-            'fecha': '2025-07-01',
-            'hora': '10:00:00',
-            'precio': Decimal('60.00'),
-            'id_paciente': self.paciente,
+    def test_create_tratamiento_detalle(self):
+        DetalleSeguimientoService.create_detalle(self.seguimiento, {
             'id_tratamiento': self.tratamiento,
+        })
+        self.seguimiento.refresh_from_db()
+        self.assertEqual(self.seguimiento.total, Decimal('60.00'))
+
+    def test_create_medicamento_detalle_stock_decrement(self):
+        DetalleSeguimientoService.create_detalle(self.seguimiento, {
             'id_medicamento': self.medicamento,
+            'cantidad': 1
         })
         self.medicamento.refresh_from_db()
         self.assertEqual(self.medicamento.cantidad, 1)
-        self.assertIsNotNone(seg.id)
+        self.seguimiento.refresh_from_db()
+        self.assertEqual(self.seguimiento.total, Decimal('30.00'))
 
     def test_create_with_inactive_tratamiento_fails(self):
         self.tratamiento.estado = 'inactivo'
         self.tratamiento.save()
         with self.assertRaises(ValueError) as ctx:
-            SeguimientoService.create_seguimiento({
-                'fecha': '2025-07-01',
-                'hora': '10:00:00',
-                'precio': Decimal('60.00'),
-                'id_paciente': self.paciente,
+            DetalleSeguimientoService.create_detalle(self.seguimiento, {
                 'id_tratamiento': self.tratamiento,
             })
         self.assertIn('no está disponible', str(ctx.exception))
@@ -90,27 +94,42 @@ class SeguimientoServiceTest(TestCase):
         self.medicamento.estado = 'inactivo'
         self.medicamento.save()
         with self.assertRaises(ValueError) as ctx:
-            SeguimientoService.create_seguimiento({
-                'fecha': '2025-07-01',
-                'hora': '10:00:00',
-                'precio': Decimal('60.00'),
-                'id_paciente': self.paciente,
-                'id_tratamiento': self.tratamiento,
+            DetalleSeguimientoService.create_detalle(self.seguimiento, {
                 'id_medicamento': self.medicamento,
+                'cantidad': 1
             })
         self.assertIn('no está disponible', str(ctx.exception))
 
+    def test_create_with_insufficient_stock_fails(self):
+        with self.assertRaises(ValueError) as ctx:
+            DetalleSeguimientoService.create_detalle(self.seguimiento, {
+                'id_medicamento': self.medicamento,
+                'cantidad': 3
+            })
+        self.assertIn('Stock insuficiente', str(ctx.exception))
+
     def test_stock_becomes_zero_auto_inactivates(self):
-        self.medicamento.cantidad = 1
-        self.medicamento.save()
-        SeguimientoService.create_seguimiento({
-            'fecha': '2025-07-01',
-            'hora': '11:00:00',
-            'precio': Decimal('60.00'),
-            'id_paciente': self.paciente,
-            'id_tratamiento': self.tratamiento,
+        DetalleSeguimientoService.create_detalle(self.seguimiento, {
             'id_medicamento': self.medicamento,
+            'cantidad': 2
         })
         self.medicamento.refresh_from_db()
         self.assertEqual(self.medicamento.cantidad, 0)
         self.assertEqual(self.medicamento.estado, 'inactivo')
+
+    def test_delete_detalle_reverts_stock(self):
+        detalle = DetalleSeguimientoService.create_detalle(self.seguimiento, {
+            'id_medicamento': self.medicamento,
+            'cantidad': 2
+        })
+        self.medicamento.refresh_from_db()
+        self.assertEqual(self.medicamento.cantidad, 0)
+
+        DetalleSeguimientoService.delete_detalle(detalle)
+        
+        self.medicamento.refresh_from_db()
+        self.assertEqual(self.medicamento.cantidad, 2)
+        self.assertEqual(self.medicamento.estado, 'activo')
+        
+        self.seguimiento.refresh_from_db()
+        self.assertEqual(self.seguimiento.total, Decimal('0.00'))

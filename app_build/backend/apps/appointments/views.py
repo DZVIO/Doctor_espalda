@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
 from .models import Agendamiento
 from .serializers import AgendamientoSerializer
@@ -10,11 +11,17 @@ from .services import AgendamientoService
 class AgendamientoViewSet(viewsets.ModelViewSet):
     queryset = Agendamiento.objects.all().select_related('id_paciente')
     serializer_class = AgendamientoSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = {
         'fecha': ['exact', 'gte', 'lte'],
         'id_paciente': ['exact'],
     }
+    search_fields = [
+        'id_paciente__nombre',
+        'id_paciente__apellido',
+        'id_paciente__cedula',
+        'id_paciente__numero'
+    ]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
