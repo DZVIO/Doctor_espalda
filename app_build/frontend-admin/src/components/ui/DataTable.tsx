@@ -14,6 +14,8 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   maxRows?: number;
   rowHeightPx?: number;
+  fillHeight?: boolean;
+  unstyled?: boolean;
 }
 
 export function DataTable<T extends { id: number | string }>({
@@ -24,6 +26,8 @@ export function DataTable<T extends { id: number | string }>({
   emptyMessage = 'No se encontraron resultados',
   maxRows,
   rowHeightPx = 56,
+  fillHeight = false,
+  unstyled = false,
 }: DataTableProps<T>) {
   if (loading) {
     return (
@@ -40,7 +44,7 @@ export function DataTable<T extends { id: number | string }>({
   const scrollMaxHeight = maxRows != null ? maxRows * rowHeightPx : undefined;
 
   const renderHead = () => (
-    <thead className="bg-gray-50">
+    <thead className={`bg-gray-50${fillHeight ? ' sticky top-0 z-10' : ''}`}>
       <tr>
         {columns.map((column, index) => (
           <th
@@ -104,7 +108,7 @@ export function DataTable<T extends { id: number | string }>({
   }
 
   return (
-    <div className="overflow-x-auto bg-white shadow rounded-lg border border-gray-200">
+    <div className={`${fillHeight ? 'h-full overflow-auto' : 'overflow-x-auto'}${unstyled ? '' : ' bg-white shadow rounded-lg border border-gray-200'}`}>
       <table className="min-w-full divide-y divide-gray-200">
         {renderHead()}
         {renderBody()}

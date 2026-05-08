@@ -12,7 +12,7 @@ class Paciente(models.Model):
     correo = models.CharField(max_length=255, null=True, blank=True)
     numero = models.CharField(max_length=255, null=True, blank=True)
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='activo')
-    
+    region = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,0 +1,423 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useApi } from '../../hooks/useApi';
+import { tratamientoService } from '../../services/tratamientos.service';
+import { medicamentoService } from '../../services/medicamentos.service';
+import { seguimientoService } from '../../services/seguimientos.service';
+import type { Seguimiento, DetalleSeguimiento, Tratamiento, Medicamento } from '../../types/models';
+
+interface Props {
+  seguimientos: Seguimiento[];
+  onRefresh: () => void;
+}
+
+export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRefresh }) => {
+  const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const { request } = useApi();
+
+  useEffect(() => {
+    // Load active treatments and medications for the selects
+    request(tratamientoService.getAll({ estado: 'activo' }), {
+      onSuccess: (data) => setTratamientos(data),
+      showErrorToast: false
+    });
+    request(medicamentoService.getAll({ estado: 'activo' }), {
+      onSuccess: (data) => setMedicamentos(data),
+      showErrorToast: false
+    });
+  }, [request]);
+
+  if (!seguimientos || seguimientos.length === 0) {
+    return (
+      <div className="p-6 text-center text-sm text-gray-500 italic">
+        No hay historial de seguimientos registrados
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Tratamientos</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Medicamentos</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {seguimientos.map((seg) => (
+              <SeguimientoRow 
+                key={seg.id} 
+                seguimiento={seg} 
+                tratamientosList={tratamientos}
+                medicamentosList={medicamentos}
+                onRefresh={onRefresh} 
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+interface RowProps {
+  seguimiento: Seguimiento;
+  tratamientosList: Tratamiento[];
+  medicamentosList: Medicamento[];
+  onRefresh: () => void;
+}
+
+const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const { request, loading } = useApi();
+  
+  // Local state for editing details
+  const [editTratamientos, setEditTratamientos] = useState<Partial<DetalleSeguimiento>[]>([]);
+  const [editMedicamentos, setEditMedicamentos] = useState<Partial<DetalleSeguimiento>[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const tratamientos = seguimiento.detalles?.filter(d => d.id_tratamiento) || [];
+  const medicamentos = seguimiento.detalles?.filter(d => d.id_medicamento) || [];
+
+  const totalMedicamentos = medicamentos.reduce((sum, m) => sum + (m.cantidad || 0), 0);
+
+  const handleExpand = () => {
+    if (!isEditing) {
+      setExpanded(!expanded);
+    }
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(true);
+    setIsEditing(true);
+    setErrorMsg(null);
+    // Clone current details to edit state
+    setEditTratamientos(tratamientos.map(d => ({ ...d })));
+    setEditMedicamentos(medicamentos.map(d => ({ ...d })));
+  };
+
+  const handleDeleteSeguimiento = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!seguimiento.id) return;
+    
+    if (window.confirm('¿Está seguro de eliminar todo el seguimiento? Esto restaurará el stock de los medicamentos.')) {
+      await request(seguimientoService.delete(seguimiento.id), {
+        successMessage: 'Seguimiento eliminado',
+        onSuccess: onRefresh
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setErrorMsg(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!seguimiento.id) return;
+    setErrorMsg(null);
+    
+    try {
+      const allEdits = [...editTratamientos, ...editMedicamentos];
+      
+      // Filter out completely empty rows
+      const validEdits = allEdits.filter(d => d.id_tratamiento || d.id_medicamento);
+      
+      // First, find what to delete
+      const currentIds = (seguimiento.detalles || []).map(d => d.id).filter(id => id);
+      const newIds = validEdits.map(d => d.id).filter(id => id);
+      const toDelete = currentIds.filter(id => !newIds.includes(id));
+      
+      // Prevent deleting the only detail if new ones aren't being added
+      if (validEdits.length === 0) {
+        setErrorMsg('Un seguimiento no puede quedar sin tratamientos ni medicamentos.');
+        return;
+      }
+
+      // Execute deletes
+      for (const id of toDelete) {
+        if (id) await seguimientoService.removeDetalle(seguimiento.id, id);
+      }
+
+      // Execute updates and creates
+      for (const det of validEdits) {
+        if (det.id) {
+          // Update
+          const original = seguimiento.detalles?.find(d => d.id === det.id);
+          if (
+            original && 
+            (original.id_tratamiento !== det.id_tratamiento || 
+             original.id_medicamento !== det.id_medicamento || 
+             original.cantidad !== det.cantidad)
+          ) {
+            await seguimientoService.updateDetalle(seguimiento.id, det.id, {
+              id_tratamiento: det.id_tratamiento,
+              id_medicamento: det.id_medicamento,
+              cantidad: det.cantidad
+            });
+          }
+        } else {
+          // Create
+          await seguimientoService.addDetalle(seguimiento.id, {
+            id_tratamiento: det.id_tratamiento,
+            id_medicamento: det.id_medicamento,
+            cantidad: det.cantidad || 1
+          });
+        }
+      }
+
+      setIsEditing(false);
+      onRefresh();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Error al guardar los cambios.');
+    }
+  };
+
+  const updateTratamiento = (index: number, val: number) => {
+    const newArr = [...editTratamientos];
+    newArr[index] = { ...newArr[index], id_tratamiento: val || undefined };
+    setEditTratamientos(newArr);
+  };
+
+  const removeTratamiento = (index: number) => {
+    const newArr = [...editTratamientos];
+    newArr.splice(index, 1);
+    setEditTratamientos(newArr);
+  };
+
+  const updateMedicamento = (index: number, field: 'id_medicamento' | 'cantidad', val: number) => {
+    const newArr = [...editMedicamentos];
+    newArr[index] = { ...newArr[index], [field]: val || undefined };
+    setEditMedicamentos(newArr);
+  };
+
+  const removeMedicamento = (index: number) => {
+    const newArr = [...editMedicamentos];
+    newArr.splice(index, 1);
+    setEditMedicamentos(newArr);
+  };
+
+  return (
+    <>
+      {/* Main Row */}
+      <tr 
+        className={`hover:bg-gray-50 transition-colors ${expanded ? 'bg-blue-50/50' : ''} ${!isEditing ? 'cursor-pointer' : ''}`}
+        onClick={handleExpand}
+      >
+        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+          {expanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          {seguimiento.fecha} <span className="text-gray-500 text-xs ml-2">{seguimiento.hora}</span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+            {tratamientos.length}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+            {totalMedicamentos}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+          ${seguimiento.total || '0.00'}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <button
+            onClick={handleEditClick}
+            disabled={isEditing}
+            className={`text-blue-600 hover:text-blue-900 mr-4 ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Editar Seguimiento"
+          >
+            <PencilIcon className="h-5 w-5 inline" />
+          </button>
+          <button
+            onClick={handleDeleteSeguimiento}
+            disabled={isEditing}
+            className={`text-red-600 hover:text-red-900 ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Eliminar Seguimiento"
+          >
+            <TrashIcon className="h-5 w-5 inline" />
+          </button>
+        </td>
+      </tr>
+
+      {/* Expanded Content */}
+      {expanded && (
+        <tr>
+          <td colSpan={6} className="px-0 py-0 border-b border-gray-200 bg-gray-50 shadow-inner">
+            <div className="px-8 py-6">
+              
+              {errorMsg && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Tratamientos Sub-section */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-2 mb-4">
+                    Tratamientos Aplicados
+                  </h4>
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      {editTratamientos.map((det, idx) => (
+                        <div key={`edit-t-${idx}`} className="flex items-center gap-2">
+                          <select
+                            value={det.id_tratamiento || ''}
+                            onChange={(e) => updateTratamiento(idx, parseInt(e.target.value))}
+                            className="flex-1 block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md border bg-white"
+                          >
+                            <option value="">Seleccione un tratamiento</option>
+                            {tratamientosList.map(t => {
+                              const isSelectedByAnother = editTratamientos.some(
+                                et => et.id_tratamiento === t.id && et.id_tratamiento !== det.id_tratamiento
+                              );
+                              if (isSelectedByAnother) return null;
+                              return <option key={t.id} value={t.id}>{t.nombre} (${t.precio})</option>;
+                            })}
+                            {det.id_tratamiento && !tratamientosList.find(t => t.id === det.id_tratamiento) && det.tratamiento_detalle && (
+                              <option value={det.id_tratamiento}>{det.tratamiento_detalle.nombre} (Inactivo)</option>
+                            )}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => removeTratamiento(idx)}
+                            className="p-1.5 text-red-600 hover:bg-red-100 rounded"
+                            title="Eliminar Tratamiento"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditTratamientos([...editTratamientos, { cantidad: 1 }])}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-1" /> Agregar Tratamiento
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {tratamientos.length > 0 ? tratamientos.map((t, i) => (
+                        <li key={i} className="flex justify-between items-center text-sm bg-white p-3 rounded shadow-sm border border-gray-100">
+                          <span className="font-medium text-gray-800">{t.tratamiento_detalle?.nombre}</span>
+                          <span className="text-gray-600 font-medium">${t.tratamiento_detalle?.precio}</span>
+                        </li>
+                      )) : (
+                        <li className="text-sm text-gray-500 italic">Ningún tratamiento en esta sesión.</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Medicamentos Sub-section */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-2 mb-4">
+                    Medicamentos Recetados
+                  </h4>
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      {editMedicamentos.map((det, idx) => (
+                        <div key={`edit-m-${idx}`} className="flex items-center gap-2">
+                          <select
+                            value={det.id_medicamento || ''}
+                            onChange={(e) => updateMedicamento(idx, 'id_medicamento', parseInt(e.target.value))}
+                            className="flex-1 block w-full pl-3 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md border bg-white"
+                          >
+                            <option value="">Seleccione un medicamento</option>
+                            {medicamentosList.map(m => {
+                              const isSelectedByAnother = editMedicamentos.some(
+                                em => em.id_medicamento === m.id && em.id_medicamento !== det.id_medicamento
+                              );
+                              if (isSelectedByAnother) return null;
+                              return <option key={m.id} value={m.id}>{m.nombre} (Disp: {m.cantidad})</option>;
+                            })}
+                            {det.id_medicamento && !medicamentosList.find(m => m.id === det.id_medicamento) && det.medicamento_detalle && (
+                              <option value={det.id_medicamento}>{det.medicamento_detalle.nombre} (Inactivo)</option>
+                            )}
+                          </select>
+                          <input
+                            type="number"
+                            min="1"
+                            value={det.cantidad || 1}
+                            onChange={(e) => updateMedicamento(idx, 'cantidad', parseInt(e.target.value))}
+                            className="w-20 block pl-3 pr-2 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md border bg-white"
+                            placeholder="Cant."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeMedicamento(idx)}
+                            className="p-1.5 text-red-600 hover:bg-red-100 rounded"
+                            title="Eliminar Medicamento"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditMedicamentos([...editMedicamentos, { cantidad: 1 }])}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-1" /> Agregar Medicamento
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {medicamentos.length > 0 ? medicamentos.map((m, i) => (
+                        <li key={i} className="flex justify-between items-center text-sm bg-white p-3 rounded shadow-sm border border-gray-100">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-800">{m.medicamento_detalle?.nombre}</span>
+                            <span className="text-xs text-gray-500">{m.cantidad} unidades a ${m.medicamento_detalle?.precio} c/u</span>
+                          </div>
+                          <span className="text-gray-900 font-semibold">
+                            ${(parseFloat(m.medicamento_detalle?.precio || '0') * m.cantidad).toFixed(2)}
+                          </span>
+                        </li>
+                      )) : (
+                        <li className="text-sm text-gray-500 italic">Ningún medicamento recetado.</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Edit Actions */}
+              {isEditing && (
+                <div className="mt-6 pt-4 border-t border-gray-300 flex justify-end gap-3">
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};

@@ -81,8 +81,8 @@ export const TratamientosPage: React.FC = () => {
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="flex-1 flex flex-col overflow-hidden p-6">
+      <div className="flex-shrink-0 flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Catálogo de Tratamientos</h1>
         <button
           onClick={() => navigate('/tratamientos/nuevo')}
@@ -93,7 +93,7 @@ export const TratamientosPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+      <div className="flex-shrink-0 bg-white p-4 rounded-lg shadow mb-4 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
         <SearchInput onSearch={setSearchTerm} placeholder="Buscar por nombre..." />
         
         <div className="flex items-center space-x-4">
@@ -111,11 +111,14 @@ export const TratamientosPage: React.FC = () => {
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={tratamientos}
-        loading={loading}
-      />
+      <div className="flex-1 min-h-0">
+        <DataTable
+          columns={columns}
+          data={tratamientos}
+          loading={loading}
+          fillHeight
+        />
+      </div>
 
       <Modal
         isOpen={isDeleteModalOpen}

@@ -6,6 +6,7 @@ import { agendamientoService } from '../../services/agendamientos.service';
 import type { Paciente, Seguimiento, Agendamiento } from '../../types/models';
 import { Badge } from '../../components/ui/Badge';
 import { DataTable } from '../../components/ui/DataTable';
+import { SeguimientosAccordionTable } from '../../components/ui/SeguimientosAccordionTable';
 import type { Column } from '../../components/ui/DataTable';
 import { useApi } from '../../hooks/useApi';
 import {
@@ -70,8 +71,8 @@ export const PacienteDetalle: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-start">
+    <div className="flex-1 flex flex-col overflow-hidden p-6">
+      <div className="flex-shrink-0 flex justify-between items-start mb-6">
         <div className="flex items-center space-x-4">
           <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
             <UserIcon className="h-10 w-10" />
@@ -92,9 +93,9 @@ export const PacienteDetalle: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-6 overflow-auto md:overflow-hidden">
         {/* Info Card */}
-        <div className="bg-white p-6 shadow rounded-lg border border-gray-200">
+        <div className="flex-shrink-0 md:w-1/3 bg-white p-6 shadow rounded-lg border border-gray-200 self-start">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <IdentificationIcon className="h-5 w-5 mr-2 text-gray-400" />
             Información de Contacto
@@ -129,10 +130,10 @@ export const PacienteDetalle: React.FC = () => {
           </div>
         </div>
 
-        {/* History Table */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        {/* History Tables */}
+        <div className="flex-1 min-h-0 flex flex-col gap-4">
+          <div className="flex-1 min-h-[200px] md:min-h-0 flex flex-col bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
               <h2 className="text-lg font-semibold flex items-center">
                 <HistoryIcon className="h-5 w-5 mr-2 text-gray-400" />
                 Historial de Tratamientos (Seguimientos)
@@ -144,17 +145,16 @@ export const PacienteDetalle: React.FC = () => {
                 + Registrar Seguimiento
               </button>
             </div>
-            <DataTable
-              columns={segColumns as any}
-              data={seguimientos as any}
-              loading={fetchingSeg}
-              emptyMessage="No hay historial de seguimientos registrados"
-              maxRows={5}
-            />
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SeguimientosAccordionTable 
+                seguimientos={seguimientos} 
+                onRefresh={fetchAllData} 
+              />
+            </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+          <div className="flex-1 min-h-[200px] md:min-h-0 flex flex-col bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
               <h2 className="text-lg font-semibold flex items-center">
                 <CalendarIcon className="h-5 w-5 mr-2 text-gray-400" />
                 Citas Agendadas
@@ -166,13 +166,16 @@ export const PacienteDetalle: React.FC = () => {
                 + Agendar Cita
               </button>
             </div>
-            <DataTable
-              columns={citaColumns}
-              data={citas}
-              loading={fetchingCitas}
-              emptyMessage="No hay citas agendadas"
-              maxRows={5}
-            />
+            <div className="flex-1 min-h-0">
+              <DataTable
+                columns={citaColumns}
+                data={citas}
+                loading={fetchingCitas}
+                emptyMessage="No hay citas agendadas"
+                fillHeight
+                unstyled
+              />
+            </div>
           </div>
         </div>
       </div>

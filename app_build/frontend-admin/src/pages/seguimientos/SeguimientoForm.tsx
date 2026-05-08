@@ -218,7 +218,8 @@ export const SeguimientoForm: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Registrar Seguimiento</h1>
         <p className="text-sm text-gray-500">Agregue tratamientos y medicamentos de forma independiente.</p>
@@ -406,5 +407,6 @@ export const SeguimientoForm: React.FC = () => {
         </div>
       </form>
     </div>
+  </div>
   );
 };

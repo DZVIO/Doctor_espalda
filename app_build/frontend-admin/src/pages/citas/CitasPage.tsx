@@ -87,8 +87,8 @@ export const CitasPage: React.FC = () => {
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="flex-1 flex flex-col overflow-hidden p-6">
+      <div className="flex-shrink-0 flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Agenda de Citas</h1>
         <button
           onClick={() => navigate('/citas/nuevo')}
@@ -99,7 +99,7 @@ export const CitasPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row items-center gap-4">
+      <div className="flex-shrink-0 bg-white p-4 rounded-lg shadow mb-4 flex flex-col md:flex-row items-center gap-4">
         <div className="flex items-center space-x-2">
           <label htmlFor="search" className="text-sm font-medium text-gray-700">Buscar paciente:</label>
           <input
@@ -133,12 +133,14 @@ export const CitasPage: React.FC = () => {
         )}
       </div>
 
-      <DataTable
-        columns={columns}
-        data={citas}
-        loading={loading}
-        maxRows={5}
-      />
+      <div className="flex-1 min-h-0">
+        <DataTable
+          columns={columns}
+          data={citas}
+          loading={loading}
+          fillHeight
+        />
+      </div>
 
       <Modal
         isOpen={isDeleteModalOpen}

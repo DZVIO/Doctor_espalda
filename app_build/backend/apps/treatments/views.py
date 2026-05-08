@@ -1,7 +1,11 @@
+# pyrefly: ignore [missing-import]
 from rest_framework import viewsets, status
+# pyrefly: ignore [missing-import]
 from rest_framework.decorators import action
+# pyrefly: ignore [missing-import]
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+# pyrefly: ignore [missing-import]
 from rest_framework.filters import SearchFilter
 
 from .models import Tratamiento, Seguimiento, DetalleSeguimiento
@@ -98,13 +102,25 @@ class SeguimientoViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['delete'], url_path=r'detalles/(?P<det_id>[^/.]+)')
-    def remove_detalle(self, request, pk=None, det_id=None):
+    @action(detail=True, methods=['put', 'delete'], url_path=r'detalles/(?P<det_id>[^/.]+)')
+    def manage_detalle(self, request, pk=None, det_id=None):
         seguimiento = self.get_object()
         try:
             detalle = DetalleSeguimiento.objects.get(id=det_id, id_venta=seguimiento)
-            DetalleSeguimientoService.delete_detalle(detalle)
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+            if request.method == 'PUT':
+                # Use partial validation
+                serializer = DetalleSeguimientoSerializer(detalle, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                
+                updated_detalle = DetalleSeguimientoService.update_detalle(detalle, serializer.validated_data)
+                output = DetalleSeguimientoSerializer(updated_detalle)
+                return Response(output.data)
+                
+            elif request.method == 'DELETE':
+                DetalleSeguimientoService.delete_detalle(detalle)
+                return Response(status=status.HTTP_204_NO_CONTENT)
+                
         except DetalleSeguimiento.DoesNotExist:
             return Response({"error": "Detalle no encontrado."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
