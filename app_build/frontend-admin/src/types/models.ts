@@ -52,6 +52,14 @@ export interface Paciente {
   updated_at: string;
 }
 
+export interface SeguimientoMini {
+  id: number;
+  fecha: string;
+  total: string;
+  tratamientos: { nombre: string; precio: string }[];
+  medicamentos: { nombre: string; precio: string; cantidad: number }[];
+}
+
 export interface Agendamiento {
   id: number;
   fecha: string;
@@ -59,6 +67,7 @@ export interface Agendamiento {
   hora_salida: string;
   id_paciente: number;
   paciente_nombre?: string;
+  seguimientos?: SeguimientoMini[];
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +90,7 @@ export interface Seguimiento {
   hora: string;
   total?: string;
   id_paciente: number;
+  id_agendamiento?: number | null;
   detalles?: DetalleSeguimiento[];
   created_at?: string;
   updated_at?: string;

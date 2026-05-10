@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { ArrowsUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export interface Column<T> {
   header: string;
   accessor: keyof T | ((item: T) => React.ReactNode);
   className?: string;
+  sortable?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -29,6 +31,13 @@ export function DataTable<T extends { id: number | string }>({
   fillHeight = false,
   unstyled = false,
 }: DataTableProps<T>) {
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const sortedData = useMemo(() => {
+    if (sortOrder === 'asc') return data;
+    return [...data].reverse();
+  }, [data, sortOrder]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -40,8 +49,12 @@ export function DataTable<T extends { id: number | string }>({
     );
   }
 
-  const shouldScroll = maxRows != null && data.length > maxRows;
+  const shouldScroll = maxRows != null && sortedData.length > maxRows;
   const scrollMaxHeight = maxRows != null ? maxRows * rowHeightPx : undefined;
+
+  const toggleSort = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
 
   const renderHead = () => (
     <thead className={`bg-gray-50${fillHeight ? ' sticky top-0 z-10' : ''}`}>
@@ -52,7 +65,22 @@ export function DataTable<T extends { id: number | string }>({
             scope="col"
             className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.className || ''}`}
           >
-            {column.header}
+            <div className="flex items-center gap-1">
+              {column.header}
+              {column.sortable && (
+                <button
+                  onClick={toggleSort}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors focus:outline-none"
+                  title={sortOrder === 'asc' ? 'Ver más recientes primero' : 'Ver más antiguos primero'}
+                >
+                  {sortOrder === 'asc' ? (
+                    <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                  )}
+                </button>
+              )}
+            </div>
           </th>
         ))}
       </tr>
@@ -61,8 +89,8 @@ export function DataTable<T extends { id: number | string }>({
 
   const renderBody = () => (
     <tbody className="bg-white divide-y divide-gray-200">
-      {data.length > 0 ? (
-        data.map((item) => (
+      {sortedData.length > 0 ? (
+        sortedData.map((item) => (
           <tr
             key={item.id}
             onClick={() => onRowClick?.(item)}

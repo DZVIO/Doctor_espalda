@@ -48,7 +48,7 @@ export const TratamientosPage: React.FC = () => {
   };
 
   const columns: Column<Tratamiento>[] = [
-    { header: 'Nombre', accessor: 'nombre' },
+    { header: 'Nombre', accessor: 'nombre', sortable: true },
     { header: 'Descripción', accessor: 'descripcion', className: 'max-w-xs truncate' },
     { header: 'Precio', accessor: (trat) => `$${trat.precio}` },
     { header: 'Estado', accessor: (trat) => <Badge status={trat.estado} /> },

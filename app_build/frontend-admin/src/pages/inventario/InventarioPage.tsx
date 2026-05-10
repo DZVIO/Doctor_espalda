@@ -48,7 +48,7 @@ export const InventarioPage: React.FC = () => {
   };
 
   const columns: Column<Medicamento>[] = [
-    { header: 'Nombre', accessor: 'nombre' },
+    { header: 'Nombre', accessor: 'nombre', sortable: true },
     { header: 'Presentación', accessor: 'presentacion' },
     { header: 'Unidad', accessor: 'unidad_medida' },
     { header: 'Cantidad', accessor: 'cantidad' },

@@ -29,6 +29,7 @@ class Seguimiento(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     id_paciente = models.ForeignKey('patients.Paciente', on_delete=models.RESTRICT, db_column='id_paciente')
+    id_agendamiento = models.ForeignKey('appointments.Agendamiento', on_delete=models.SET_NULL, null=True, blank=True, related_name='seguimientos', db_column='id_agendamiento')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

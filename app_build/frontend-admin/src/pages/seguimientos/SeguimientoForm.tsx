@@ -37,6 +37,9 @@ export const SeguimientoForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const initialPacienteId = location.state?.pacienteId || '';
+  const citaId = location.state?.citaId || null;
+  const citaFecha = location.state?.citaFecha || '';
+  const citaHora = location.state?.citaHora || '';
 
   const { register, handleSubmit } = useForm<FormValues>({
     defaultValues: {
@@ -181,6 +184,7 @@ export const SeguimientoForm: React.FC = () => {
         fecha: data.fecha,
         hora: data.hora,
         id_paciente: paciente!.id,
+        id_agendamiento: citaId,
       };
       const segCreado = await seguimientoService.create(seguimientoPayload);
       const segId = segCreado.id!;
@@ -223,6 +227,17 @@ export const SeguimientoForm: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Registrar Seguimiento</h1>
         <p className="text-sm text-gray-500">Agregue tratamientos y medicamentos de forma independiente.</p>
+        
+        {citaId && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-100 flex items-start">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800">Cita Asociada</h3>
+              <p className="mt-1 text-sm text-blue-600">
+                Este seguimiento quedará vinculado automáticamente a la cita del <strong>{citaFecha}</strong> a las <strong>{citaHora}</strong>.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

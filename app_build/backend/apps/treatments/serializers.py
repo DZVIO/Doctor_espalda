@@ -52,7 +52,7 @@ class SeguimientoSerializer(serializers.ModelSerializer):
         model = Seguimiento
         fields = [
             'id', 'fecha', 'hora', 'total',
-            'id_paciente', 'detalles',
+            'id_paciente', 'id_agendamiento', 'detalles',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'total', 'created_at', 'updated_at']

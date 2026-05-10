@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDownIcon, ChevronUpIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useApi } from '../../hooks/useApi';
 import { tratamientoService } from '../../services/tratamientos.service';
@@ -9,12 +9,19 @@ import type { Seguimiento, DetalleSeguimiento, Tratamiento, Medicamento } from '
 interface Props {
   seguimientos: Seguimiento[];
   onRefresh: () => void;
+  forceExpandId?: number | null;
 }
 
-export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRefresh }) => {
+export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRefresh, forceExpandId }) => {
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { request } = useApi();
+
+  const sortedSeguimientos = useMemo(() => {
+    if (sortOrder === 'asc') return seguimientos;
+    return [...seguimientos].reverse();
+  }, [seguimientos, sortOrder]);
 
   useEffect(() => {
     // Load active treatments and medications for the selects
@@ -36,6 +43,10 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
     );
   }
 
+  const toggleSort = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
   return (
     <div className="flex flex-col">
       <div className="overflow-x-auto">
@@ -43,7 +54,22 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="flex items-center gap-1">
+                  Fecha
+                  <button
+                    onClick={toggleSort}
+                    className="p-1 hover:bg-gray-200 rounded transition-colors focus:outline-none"
+                    title={sortOrder === 'asc' ? 'Ver más recientes primero' : 'Ver más antiguos primero'}
+                  >
+                    {sortOrder === 'asc' ? (
+                      <ChevronUpIcon className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                    )}
+                  </button>
+                </div>
+              </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Tratamientos</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Medicamentos</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
@@ -51,13 +77,14 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {seguimientos.map((seg) => (
+            {sortedSeguimientos.map((seg) => (
               <SeguimientoRow 
                 key={seg.id} 
                 seguimiento={seg} 
                 tratamientosList={tratamientos}
                 medicamentosList={medicamentos}
                 onRefresh={onRefresh} 
+                forceExpand={forceExpandId === seg.id}
               />
             ))}
           </tbody>
@@ -72,12 +99,23 @@ interface RowProps {
   tratamientosList: Tratamiento[];
   medicamentosList: Medicamento[];
   onRefresh: () => void;
+  forceExpand?: boolean;
 }
 
-const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh }) => {
+const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh, forceExpand }) => {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { request, loading } = useApi();
+  const rowRef = React.useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (forceExpand) {
+      setExpanded(true);
+      setTimeout(() => {
+        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [forceExpand]);
   
   // Local state for editing details
   const [editTratamientos, setEditTratamientos] = useState<Partial<DetalleSeguimiento>[]>([]);
@@ -210,6 +248,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
     <>
       {/* Main Row */}
       <tr 
+        ref={rowRef}
         className={`hover:bg-gray-50 transition-colors ${expanded ? 'bg-blue-50/50' : ''} ${!isEditing ? 'cursor-pointer' : ''}`}
         onClick={handleExpand}
       >

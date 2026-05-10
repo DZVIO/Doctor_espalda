@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { pacienteService } from '../../services/pacientes.service';
 import { seguimientoService } from '../../services/seguimientos.service';
@@ -16,6 +17,7 @@ import {
   IdentificationIcon,
   CalendarIcon
 } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
 export const PacienteDetalle: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +25,7 @@ export const PacienteDetalle: React.FC = () => {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [citas, setCitas] = useState<Agendamiento[]>([]);
+  const [expandedSeguimientoId, setExpandedSeguimientoId] = useState<number | null>(null);
 
   const { loading: fetchingPac, request: fetchPacRequest } = useApi();
   const { loading: fetchingSeg, request: fetchSegRequest } = useApi();
@@ -57,9 +60,39 @@ export const PacienteDetalle: React.FC = () => {
   ];
 
   const citaColumns: Column<Agendamiento>[] = [
-    { header: 'Fecha', accessor: 'fecha' },
+    { header: 'Fecha', accessor: 'fecha', sortable: true },
     { header: 'Entrada', accessor: 'hora_ingreso' },
     { header: 'Salida', accessor: 'hora_salida' },
+    {
+      header: 'Seguimiento',
+      accessor: (cita) => {
+        if (!cita.seguimientos || cita.seguimientos.length === 0) {
+          return (
+            <button
+              onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
+              className="px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-xs transition-colors border border-blue-200"
+              title="Registrar nuevo seguimiento para esta cita"
+            >
+              + Seguimiento
+            </button>
+          );
+        }
+        return (
+          <div className="flex flex-wrap items-center">
+            {cita.seguimientos.map(s => (
+              <SeguimientoChip key={s.id} s={s} onClick={() => setExpandedSeguimientoId(s.id)} />
+            ))}
+            <button
+              onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
+              className="group flex items-center px-2 py-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold text-xs transition-colors border border-blue-200 mb-1"
+              title="Registrar seguimiento adicional para esta cita"
+            >
+              + <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap group-hover:ml-1">Agregar seguimiento</span>
+            </button>
+          </div>
+        );
+      }
+    }
   ];
 
   if (fetchingPac && !paciente) {
@@ -149,6 +182,7 @@ export const PacienteDetalle: React.FC = () => {
               <SeguimientosAccordionTable 
                 seguimientos={seguimientos} 
                 onRefresh={fetchAllData} 
+                forceExpandId={expandedSeguimientoId}
               />
             </div>
           </div>
@@ -189,3 +223,131 @@ const HistoryIcon = ({ className }: { className?: string }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
   </svg>
 );
+
+const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const chipRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<any>(null);
+
+  const tratamientosCount = s.tratamientos?.length || 0;
+  const tratamientosText = tratamientosCount === 1 ? '1 tratamiento' : `${tratamientosCount} tratamientos`;
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      if (chipRef.current) {
+        const rect = chipRef.current.getBoundingClientRect();
+        
+        // Calculate center position horizontally
+        let left = rect.left + window.scrollX + rect.width / 2;
+        const tooltipWidth = 256; // 64 * 4px
+        
+        // Adjust if near screen edges
+        if (left - tooltipWidth / 2 < 10 + window.scrollX) {
+          left = tooltipWidth / 2 + 10 + window.scrollX;
+        } else if (left + tooltipWidth / 2 > window.innerWidth + window.scrollX - 10) {
+          left = window.innerWidth + window.scrollX - tooltipWidth / 2 - 10;
+        }
+
+        // Calculate absolute top position directly
+        const alturaEstimadaDelTooltip = 160;
+        const top = rect.top + window.scrollY - alturaEstimadaDelTooltip - 8;
+
+        setTooltipPos({ top, left });
+        setShowTooltip(true);
+      }
+    }, 200);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShowTooltip(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={chipRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="inline-block mr-2 mb-1"
+    >
+      <button
+        onClick={onClick}
+        className="flex items-center space-x-1.5 px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-full border border-green-200 transition-colors text-xs font-medium"
+      >
+        <CheckCircleIcon className="h-4 w-4 text-green-600" />
+        <span>{tratamientosText} &middot; ${s.total}</span>
+      </button>
+
+      {showTooltip && createPortal(
+        <div 
+          className="absolute bg-gray-900 text-white text-xs rounded-lg p-3 z-[9999] shadow-xl pointer-events-none w-64 transform -translate-x-1/2 transition-opacity duration-200"
+          style={{ 
+            top: tooltipPos.top, 
+            left: tooltipPos.left,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
+          <div className="font-semibold text-sm border-b border-gray-700 pb-1 mb-2">
+            Seguimiento #{s.id} — {s.fecha}
+          </div>
+          
+          {s.tratamientos && s.tratamientos.length > 0 && (
+            <div className="mb-2">
+              <span className="text-gray-400 font-medium block mb-1">Tratamientos:</span>
+              <ul className="space-y-1">
+                {s.tratamientos.map((t: any, i: number) => (
+                  <li key={i} className="flex justify-between">
+                    <span>{t.nombre}</span>
+                    <span>${t.precio}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {s.medicamentos && s.medicamentos.length > 0 && (
+            <div className="mb-2">
+              <span className="text-gray-400 font-medium block mb-1">Medicamentos:</span>
+              <ul className="space-y-1">
+                {s.medicamentos.map((m: any, i: number) => (
+                  <li key={i} className="flex justify-between">
+                    <span className="truncate w-3/4">{m.cantidad}x {m.nombre}</span>
+                    <span>${m.precio}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-gray-700 flex justify-between font-bold text-sm">
+            <span>Total:</span>
+            <span className="text-green-400">${s.total}</span>
+          </div>
+
+          {/* Arrow */}
+          <div 
+            className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"
+            style={{ 
+              left: `calc(50% + ${((chipRef.current?.getBoundingClientRect().left || 0) + window.scrollX + (chipRef.current?.getBoundingClientRect().width || 0) / 2) - tooltipPos.left}px)` 
+            }}
+          ></div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};

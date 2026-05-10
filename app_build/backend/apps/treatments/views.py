@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 # pyrefly: ignore [missing-import]
-from rest_framework.filters import SearchFilter
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from .models import Tratamiento, Seguimiento, DetalleSeguimiento
 from .serializers import TratamientoSerializer, SeguimientoSerializer, DetalleSeguimientoSerializer
@@ -16,9 +16,11 @@ from .services import TratamientoService, SeguimientoService, DetalleSeguimiento
 class TratamientoViewSet(viewsets.ModelViewSet):
     queryset = Tratamiento.objects.all()
     serializer_class = TratamientoSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['estado']
     search_fields = ['nombre']
+    ordering_fields = ['created_at', 'nombre', 'precio']
+    ordering = ['created_at']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -57,8 +59,10 @@ class TratamientoViewSet(viewsets.ModelViewSet):
 class SeguimientoViewSet(viewsets.ModelViewSet):
     queryset = Seguimiento.objects.prefetch_related('detalles').all()
     serializer_class = SeguimientoSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['id_paciente', 'fecha']
+    ordering_fields = ['fecha', 'hora', 'created_at', 'total']
+    ordering = ['fecha', 'hora']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

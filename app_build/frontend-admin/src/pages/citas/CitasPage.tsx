@@ -46,9 +46,9 @@ export const CitasPage: React.FC = () => {
   };
 
   const columns: Column<Agendamiento>[] = [
-    { header: 'Fecha', accessor: 'fecha' },
-    { header: 'Entrada', accessor: 'hora_ingreso' },
-    { header: 'Salida', accessor: 'hora_salida' },
+    { header: 'Fecha', accessor: 'fecha', sortable: true },
+    { header: 'Entrada', accessor: 'hora_ingreso', sortable: true },
+    { header: 'Salida', accessor: 'hora_salida', sortable: true },
     { 
       header: 'Paciente', 
       accessor: (cita) => (

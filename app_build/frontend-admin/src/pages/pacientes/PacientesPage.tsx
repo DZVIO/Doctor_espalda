@@ -50,6 +50,7 @@ export const PacientesPage: React.FC = () => {
   const columns: Column<Paciente>[] = [
     { header: 'Cédula', accessor: 'cedula' },
     { header: 'Nombre', accessor: (p) => `${p.nombre} ${p.apellido}` },
+    { header: 'Registro', accessor: (p) => new Date(p.created_at).toLocaleDateString(), sortable: true },
     { header: 'Correo', accessor: 'correo' },
     { header: 'Teléfono', accessor: 'numero' },
     { header: 'Estado', accessor: (p) => <Badge status={p.estado} /> },

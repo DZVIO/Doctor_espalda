@@ -122,6 +122,9 @@ class DetalleSeguimientoServiceTest(TestCase):
             'id_medicamento': self.medicamento,
             'cantidad': 2
         })
+        DetalleSeguimientoService.create_detalle(self.seguimiento, {
+            'id_tratamiento': self.tratamiento
+        })
         self.medicamento.refresh_from_db()
         self.assertEqual(self.medicamento.cantidad, 0)
 
@@ -132,4 +135,4 @@ class DetalleSeguimientoServiceTest(TestCase):
         self.assertEqual(self.medicamento.estado, 'activo')
         
         self.seguimiento.refresh_from_db()
-        self.assertEqual(self.seguimiento.total, Decimal('0.00'))
+        self.assertEqual(self.seguimiento.total, Decimal('60.00'))
