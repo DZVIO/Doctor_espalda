@@ -13,7 +13,7 @@ class AgendamientoViewSet(viewsets.ModelViewSet):
     serializer_class = AgendamientoSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     ordering_fields = ['fecha', 'hora_ingreso', 'created_at']
-    ordering = ['fecha', 'hora_ingreso']
+    ordering = ['-fecha', '-hora_ingreso']
     filterset_fields = {
         'fecha': ['exact', 'gte', 'lte'],
         'id_paciente': ['exact'],

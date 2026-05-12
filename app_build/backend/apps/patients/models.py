@@ -12,7 +12,18 @@ class Paciente(models.Model):
     correo = models.CharField(max_length=255, null=True, blank=True)
     numero = models.CharField(max_length=255, null=True, blank=True)
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='activo')
-    region = models.CharField(max_length=255, null=True, blank=True)
+    def get_region_choices():
+        import phonenumbers
+        choices = []
+        seen = set()
+        for region in sorted(phonenumbers.SUPPORTED_REGIONS):
+            code = str(phonenumbers.country_code_for_region(region))
+            if code not in seen:
+                choices.append((code, f"{region} (+{code})"))
+                seen.add(code)
+        return choices
+
+    region = models.CharField(max_length=10, choices=get_region_choices(), default='57', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

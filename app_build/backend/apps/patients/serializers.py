@@ -7,7 +7,7 @@ class PacienteSerializer(serializers.ModelSerializer):
         model = Paciente
         fields = [
             'id', 'nombre', 'apellido', 'cedula', 'correo',
-            'numero', 'estado', 'created_at', 'updated_at',
+            'numero', 'region', 'estado', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

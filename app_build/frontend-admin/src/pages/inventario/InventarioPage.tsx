@@ -49,8 +49,15 @@ export const InventarioPage: React.FC = () => {
 
   const columns: Column<Medicamento>[] = [
     { header: 'Nombre', accessor: 'nombre', sortable: true },
-    { header: 'Presentación', accessor: 'presentacion' },
-    { header: 'Unidad', accessor: 'unidad_medida' },
+    { header: 'Marca', accessor: (med) => med.marca_detalle?.marca || '-' },
+    { 
+      header: 'Presentación', 
+      accessor: (med) => {
+        const p = med.presentacion_detalle;
+        if (!p) return '-';
+        return `${p.forma_farmaceutica_detalle?.forma} · ${p.cantidad} · ${p.unidad_medida_detalle?.abreviatura}`;
+      }
+    },
     { header: 'Cantidad', accessor: 'cantidad' },
     { header: 'Precio', accessor: (med) => `$${med.precio}` },
     { header: 'Estado', accessor: (med) => <Badge status={med.estado} /> },

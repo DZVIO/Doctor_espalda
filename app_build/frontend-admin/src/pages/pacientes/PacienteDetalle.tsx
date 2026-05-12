@@ -10,6 +10,7 @@ import { DataTable } from '../../components/ui/DataTable';
 import { SeguimientosAccordionTable } from '../../components/ui/SeguimientosAccordionTable';
 import type { Column } from '../../components/ui/DataTable';
 import { useApi } from '../../hooks/useApi';
+import { formatDate } from '../../utils/dateUtils';
 import {
   UserIcon,
   EnvelopeIcon,
@@ -25,10 +26,10 @@ export const PacienteDetalle: React.FC = () => {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [citas, setCitas] = useState<Agendamiento[]>([]);
-  const [expandedSeguimientoId, setExpandedSeguimientoId] = useState<number | null>(null);
+  const [expandedSeguimientoId, setExpandedSeguimientoId] = useState<{ id: number, signal: number } | null>(null);
 
   const { loading: fetchingPac, request: fetchPacRequest } = useApi();
-  const { loading: fetchingSeg, request: fetchSegRequest } = useApi();
+  const { request: fetchSegRequest } = useApi();
   const { loading: fetchingCitas, request: fetchCitasRequest } = useApi();
 
   const fetchAllData = useCallback(() => {
@@ -52,15 +53,15 @@ export const PacienteDetalle: React.FC = () => {
     fetchAllData();
   }, [fetchAllData]);
 
-  const segColumns: Column<Seguimiento & { id: number }>[] = [
-    { header: 'Fecha', accessor: 'fecha' },
-    { header: 'Hora', accessor: 'hora' },
-    { header: 'Detalles', accessor: (s) => s.detalles?.length ? `${s.detalles.length} ítems` : 'Ninguno' },
-    { header: 'Total', accessor: (s) => `$${s.total || '0.00'}` },
-  ];
+  // const segColumns: Column<Seguimiento & { id: number }>[] = [
+  //   { header: 'Fecha', accessor: 'fecha' },
+  //   { header: 'Hora', accessor: 'hora' },
+  //   { header: 'Detalles', accessor: (s) => s.detalles?.length ? `${s.detalles.length} ítems` : 'Ninguno' },
+  //   { header: 'Total', accessor: (s) => `$${s.total || '0.00'}` },
+  // ];
 
   const citaColumns: Column<Agendamiento>[] = [
-    { header: 'Fecha', accessor: 'fecha', sortable: true },
+    { header: 'Fecha', accessor: (cita) => formatDate(cita.fecha), sortable: true },
     { header: 'Entrada', accessor: 'hora_ingreso' },
     { header: 'Salida', accessor: 'hora_salida' },
     {
@@ -80,15 +81,11 @@ export const PacienteDetalle: React.FC = () => {
         return (
           <div className="flex flex-wrap items-center">
             {cita.seguimientos.map(s => (
-              <SeguimientoChip key={s.id} s={s} onClick={() => setExpandedSeguimientoId(s.id)} />
+              <SeguimientoChip key={s.id} s={s} onClick={() => setExpandedSeguimientoId({ id: s.id, signal: Date.now() })} />
             ))}
-            <button
+            <AddSeguimientoButton 
               onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
-              className="group flex items-center px-2 py-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold text-xs transition-colors border border-blue-200 mb-1"
-              title="Registrar seguimiento adicional para esta cita"
-            >
-              + <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap group-hover:ml-1">Agregar seguimiento</span>
-            </button>
+            />
           </div>
         );
       }
@@ -114,7 +111,7 @@ export const PacienteDetalle: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">{paciente.nombre} {paciente.apellido}</h1>
             <div className="flex items-center space-x-2 mt-1">
               <Badge status={paciente.estado} />
-              <span className="text-sm text-gray-500">Miembro desde {new Date(paciente.created_at).toLocaleDateString()}</span>
+              <span className="text-sm text-gray-500">Miembro desde {formatDate(paciente.created_at)}</span>
             </div>
           </div>
         </div>
@@ -147,7 +144,7 @@ export const PacienteDetalle: React.FC = () => {
               <span className="flex-1">{paciente.numero || 'No registrado'}</span>
               {paciente.numero && (
                 <a
-                  href={`https://wa.me/57${paciente.numero.replace(/\D/g, '')}`}
+                  href={`https://wa.me/${paciente.region || '57'}${paciente.numero.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-2 inline-flex items-center px-2 py-1 border border-green-200 text-xs font-medium rounded text-green-700 bg-green-50 hover:bg-green-100"
@@ -214,6 +211,49 @@ export const PacienteDetalle: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const AddSeguimientoButton = ({ onClick }: { onClick: () => void }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleMouseEnter = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPos({
+        top: rect.top + window.scrollY - 32, // Position above
+        left: rect.left + window.scrollX + rect.width / 2
+      });
+      setShowTooltip(true);
+    }
+  };
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={onClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowTooltip(false)}
+        className="flex items-center justify-center w-7 h-7 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 font-bold text-sm transition-colors border border-blue-200 mb-1"
+      >
+        +
+      </button>
+
+      {showTooltip && createPortal(
+        <div 
+          className="absolute bg-gray-800 text-white text-[10px] px-2 py-1 rounded shadow-lg z-[9999] pointer-events-none transform -translate-x-1/2 whitespace-nowrap"
+          style={{ top: tooltipPos.top, left: tooltipPos.left }}
+        >
+          Agregar seguimiento
+          {/* Arrow */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 
@@ -302,7 +342,7 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
             }
           `}</style>
           <div className="font-semibold text-sm border-b border-gray-700 pb-1 mb-2">
-            Seguimiento #{s.id} — {s.fecha}
+            Seguimiento #{s.id} — {formatDate(s.fecha)}
           </div>
           
           {s.tratamientos && s.tratamientos.length > 0 && (

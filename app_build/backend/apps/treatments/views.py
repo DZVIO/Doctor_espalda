@@ -20,7 +20,7 @@ class TratamientoViewSet(viewsets.ModelViewSet):
     filterset_fields = ['estado']
     search_fields = ['nombre']
     ordering_fields = ['created_at', 'nombre', 'precio']
-    ordering = ['created_at']
+    ordering = ['-created_at']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -62,7 +62,7 @@ class SeguimientoViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['id_paciente', 'fecha']
     ordering_fields = ['fecha', 'hora', 'created_at', 'total']
-    ordering = ['fecha', 'hora']
+    ordering = ['-fecha', '-hora']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

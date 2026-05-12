@@ -5,6 +5,8 @@ import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 import { useApi } from '../../hooks/useApi';
 import type { Paciente } from '../../types/models';
+import Select from 'react-select';
+import { countryOptions } from '../../utils/countries';
 
 export const PacienteForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +19,7 @@ export const PacienteForm: React.FC = () => {
     cedula: '',
     correo: '',
     numero: '',
+    region: '57',
     estado: 'activo',
   });
 
@@ -120,14 +123,44 @@ export const PacienteForm: React.FC = () => {
             </FormField>
 
             <FormField label="Teléfono" id="numero">
-              <input
-                type="text"
-                name="numero"
-                id="numero"
-                value={formData.numero || ''}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
+              <div className="flex space-x-2">
+                <div className="w-1/3 min-w-[140px]">
+                  <Select
+                    options={countryOptions}
+                    value={countryOptions.find(o => o.value === formData.region) || countryOptions.find(o => o.value === '57')}
+                    onChange={(opt) => handleChange({ target: { name: 'region', value: opt?.value || '57' } } as any)}
+                    className="mt-1"
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        minHeight: '42px',
+                        borderColor: '#d1d5db',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        '&:hover': {
+                          borderColor: '#9ca3af'
+                        }
+                      }),
+                      valueContainer: (base) => ({
+                        ...base,
+                        padding: '2px 8px'
+                      })
+                    }}
+                    isSearchable
+                    placeholder="Región"
+                  />
+                </div>
+                <div className="w-2/3">
+                  <input
+                    type="text"
+                    name="numero"
+                    id="numero"
+                    value={formData.numero || ''}
+                    onChange={handleChange}
+                    placeholder="Ej. 300 123 4567"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm h-[42px] px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
             </FormField>
 
             <FormField label="Estado" id="estado">

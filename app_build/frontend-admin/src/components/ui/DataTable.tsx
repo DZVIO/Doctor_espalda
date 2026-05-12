@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowsUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export interface Column<T> {
   header: string;
@@ -31,10 +31,11 @@ export function DataTable<T extends { id: number | string }>({
   fillHeight = false,
   unstyled = false,
 }: DataTableProps<T>) {
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const sortedData = useMemo(() => {
-    if (sortOrder === 'asc') return data;
+    // Backend data is assumed to be in descending order by default
+    if (sortOrder === 'desc') return data;
     return [...data].reverse();
   }, [data, sortOrder]);
 
@@ -71,12 +72,12 @@ export function DataTable<T extends { id: number | string }>({
                 <button
                   onClick={toggleSort}
                   className="p-1 hover:bg-gray-200 rounded transition-colors focus:outline-none"
-                  title={sortOrder === 'asc' ? 'Ver más recientes primero' : 'Ver más antiguos primero'}
+                  title={sortOrder === 'desc' ? 'Ver más antiguos primero' : 'Ver más recientes primero'}
                 >
-                  {sortOrder === 'asc' ? (
-                    <ChevronUpIcon className="h-4 w-4 text-blue-600" />
-                  ) : (
+                  {sortOrder === 'desc' ? (
                     <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <ChevronUpIcon className="h-4 w-4 text-blue-600" />
                   )}
                 </button>
               )}

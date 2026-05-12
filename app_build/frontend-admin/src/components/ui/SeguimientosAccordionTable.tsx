@@ -4,22 +4,25 @@ import { useApi } from '../../hooks/useApi';
 import { tratamientoService } from '../../services/tratamientos.service';
 import { medicamentoService } from '../../services/medicamentos.service';
 import { seguimientoService } from '../../services/seguimientos.service';
+import { SearchableSelect } from './SearchableSelect';
+import { formatDate } from '../../utils/dateUtils';
 import type { Seguimiento, DetalleSeguimiento, Tratamiento, Medicamento } from '../../types/models';
 
 interface Props {
   seguimientos: Seguimiento[];
   onRefresh: () => void;
-  forceExpandId?: number | null;
+  forceExpandId?: { id: number, signal: number } | null;
 }
 
 export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRefresh, forceExpandId }) => {
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { request } = useApi();
 
   const sortedSeguimientos = useMemo(() => {
-    if (sortOrder === 'asc') return seguimientos;
+    // Backend data is assumed to be in descending order by default
+    if (sortOrder === 'desc') return seguimientos;
     return [...seguimientos].reverse();
   }, [seguimientos, sortOrder]);
 
@@ -27,11 +30,11 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
     // Load active treatments and medications for the selects
     request(tratamientoService.getAll({ estado: 'activo' }), {
       onSuccess: (data) => setTratamientos(data),
-      showErrorToast: false
+      onError: () => {}
     });
     request(medicamentoService.getAll({ estado: 'activo' }), {
       onSuccess: (data) => setMedicamentos(data),
-      showErrorToast: false
+      onError: () => {}
     });
   }, [request]);
 
@@ -60,12 +63,12 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
                   <button
                     onClick={toggleSort}
                     className="p-1 hover:bg-gray-200 rounded transition-colors focus:outline-none"
-                    title={sortOrder === 'asc' ? 'Ver más recientes primero' : 'Ver más antiguos primero'}
+                    title={sortOrder === 'desc' ? 'Ver más antiguos primero' : 'Ver más recientes primero'}
                   >
-                    {sortOrder === 'asc' ? (
-                      <ChevronUpIcon className="h-4 w-4 text-blue-600" />
-                    ) : (
+                    {sortOrder === 'desc' ? (
                       <ChevronDownIcon className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <ChevronUpIcon className="h-4 w-4 text-blue-600" />
                     )}
                   </button>
                 </div>
@@ -84,7 +87,7 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
                 tratamientosList={tratamientos}
                 medicamentosList={medicamentos}
                 onRefresh={onRefresh} 
-                forceExpand={forceExpandId === seg.id}
+                forceExpandSignal={forceExpandId?.id === seg.id ? forceExpandId?.signal : undefined}
               />
             ))}
           </tbody>
@@ -99,23 +102,27 @@ interface RowProps {
   tratamientosList: Tratamiento[];
   medicamentosList: Medicamento[];
   onRefresh: () => void;
-  forceExpand?: boolean;
+  forceExpandSignal?: number;
 }
 
-const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh, forceExpand }) => {
+const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh, forceExpandSignal }) => {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { request, loading } = useApi();
   const rowRef = React.useRef<HTMLTableRowElement>(null);
 
   useEffect(() => {
-    if (forceExpand) {
-      setExpanded(true);
-      setTimeout(() => {
-        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+    if (forceExpandSignal !== undefined) {
+      setExpanded(prev => !prev);
+      
+      // If we are expanding, scroll to it
+      if (!expanded) {
+        setTimeout(() => {
+          rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+      }
     }
-  }, [forceExpand]);
+  }, [forceExpandSignal]);
   
   // Local state for editing details
   const [editTratamientos, setEditTratamientos] = useState<Partial<DetalleSeguimiento>[]>([]);
@@ -256,7 +263,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
           {expanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-          {seguimiento.fecha} <span className="text-gray-500 text-xs ml-2">{seguimiento.hora}</span>
+          {formatDate(seguimiento.fecha)} <span className="text-gray-500 text-xs ml-2">{seguimiento.hora}</span>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
@@ -313,23 +320,24 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
                     <div className="space-y-3">
                       {editTratamientos.map((det, idx) => (
                         <div key={`edit-t-${idx}`} className="flex items-center gap-2">
-                          <select
-                            value={det.id_tratamiento || ''}
-                            onChange={(e) => updateTratamiento(idx, parseInt(e.target.value))}
-                            className="flex-1 block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md border bg-white"
-                          >
-                            <option value="">Seleccione un tratamiento</option>
-                            {tratamientosList.map(t => {
+                          <SearchableSelect
+                            options={tratamientosList.map(t => {
                               const isSelectedByAnother = editTratamientos.some(
                                 et => et.id_tratamiento === t.id && et.id_tratamiento !== det.id_tratamiento
                               );
-                              if (isSelectedByAnother) return null;
-                              return <option key={t.id} value={t.id}>{t.nombre} (${t.precio})</option>;
+                              return {
+                                id: t.id,
+                                label: t.nombre,
+                                sublabel: `$${t.precio}`,
+                                disabled: isSelectedByAnother,
+                              };
                             })}
-                            {det.id_tratamiento && !tratamientosList.find(t => t.id === det.id_tratamiento) && det.tratamiento_detalle && (
-                              <option value={det.id_tratamiento}>{det.tratamiento_detalle.nombre} (Inactivo)</option>
-                            )}
-                          </select>
+                            value={det.id_tratamiento ?? null}
+                            onChange={(id) => updateTratamiento(idx, id)}
+                            placeholder="Buscar tratamiento..."
+                            emptyMessage="Sin resultados"
+                            className="flex-1"
+                          />
                           <button
                             type="button"
                             onClick={() => removeTratamiento(idx)}
@@ -371,23 +379,24 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
                     <div className="space-y-3">
                       {editMedicamentos.map((det, idx) => (
                         <div key={`edit-m-${idx}`} className="flex items-center gap-2">
-                          <select
-                            value={det.id_medicamento || ''}
-                            onChange={(e) => updateMedicamento(idx, 'id_medicamento', parseInt(e.target.value))}
-                            className="flex-1 block w-full pl-3 pr-8 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md border bg-white"
-                          >
-                            <option value="">Seleccione un medicamento</option>
-                            {medicamentosList.map(m => {
+                          <SearchableSelect
+                            options={medicamentosList.map(m => {
                               const isSelectedByAnother = editMedicamentos.some(
                                 em => em.id_medicamento === m.id && em.id_medicamento !== det.id_medicamento
                               );
-                              if (isSelectedByAnother) return null;
-                              return <option key={m.id} value={m.id}>{m.nombre} (Disp: {m.cantidad})</option>;
+                              return {
+                                id: m.id,
+                                label: m.nombre,
+                                sublabel: `$${m.precio}  (Stock: ${m.cantidad})`,
+                                disabled: isSelectedByAnother,
+                              };
                             })}
-                            {det.id_medicamento && !medicamentosList.find(m => m.id === det.id_medicamento) && det.medicamento_detalle && (
-                              <option value={det.id_medicamento}>{det.medicamento_detalle.nombre} (Inactivo)</option>
-                            )}
-                          </select>
+                            value={det.id_medicamento ?? null}
+                            onChange={(id) => updateMedicamento(idx, 'id_medicamento', id)}
+                            placeholder="Buscar medicamento..."
+                            emptyMessage="Sin resultados"
+                            className="flex-1"
+                          />
                           <input
                             type="number"
                             min="1"

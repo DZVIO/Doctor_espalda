@@ -7,6 +7,7 @@ import { tratamientoService } from '../../services/tratamientos.service';
 import { medicamentoService } from '../../services/medicamentos.service';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useApi } from '../../hooks/useApi';
 import type { Paciente, Tratamiento, Medicamento } from '../../types/models';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -41,12 +42,22 @@ export const SeguimientoForm: React.FC = () => {
   const citaFecha = location.state?.citaFecha || '';
   const citaHora = location.state?.citaHora || '';
 
-  const { register, handleSubmit } = useForm<FormValues>({
+  const { register, handleSubmit, reset } = useForm<FormValues>({
     defaultValues: {
-      fecha: new Date().toISOString().split('T')[0],
-      hora: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      fecha: citaFecha || new Date().toISOString().split('T')[0],
+      hora: citaHora || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     }
   });
+
+  // Ensure form resets if location state changes (though rare in this flow, it's safer)
+  useEffect(() => {
+    if (citaFecha || citaHora) {
+      reset({
+        fecha: citaFecha || new Date().toISOString().split('T')[0],
+        hora: citaHora || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      });
+    }
+  }, [citaFecha, citaHora, reset]);
 
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [tratamientosDisponibles, setTratamientosDisponibles] = useState<Tratamiento[]>([]);
@@ -91,12 +102,33 @@ export const SeguimientoForm: React.FC = () => {
   }, [filasTratamiento, filasMedicamento]);
 
   // ── Selectors for dropdowns ──
-  const [tratSeleccionado, setTratSeleccionado] = useState('');
-  const [medSeleccionado, setMedSeleccionado] = useState('');
+  const [tratSeleccionado, setTratSeleccionado] = useState<number | null>(null);
+  const [medSeleccionado, setMedSeleccionado] = useState<number | null>(null);
+
+  // Derive searchable options, disabling already-added items
+  const tratamientoOptions = useMemo(() => {
+    return tratamientosDisponibles.map(t => ({
+      id: t.id,
+      label: t.nombre,
+      sublabel: `$${t.precio}`,
+      disabled: filasTratamiento.some(f => f.id_tratamiento === t.id),
+    }));
+  }, [tratamientosDisponibles, filasTratamiento]);
+
+  const medicamentoOptions = useMemo(() => {
+    return medicamentosDisponibles
+      .filter(m => m.cantidad > 0)
+      .map(m => ({
+        id: m.id,
+        label: m.nombre,
+        sublabel: `$${m.precio}  (Stock: ${m.cantidad})`,
+        disabled: filasMedicamento.some(f => f.id_medicamento === m.id),
+      }));
+  }, [medicamentosDisponibles, filasMedicamento]);
 
   const agregarTratamiento = () => {
     if (!tratSeleccionado) return;
-    const id = Number(tratSeleccionado);
+    const id = tratSeleccionado;
     if (filasTratamiento.some(f => f.id_tratamiento === id)) {
       toast.error('Este tratamiento ya fue agregado.');
       return;
@@ -111,7 +143,7 @@ export const SeguimientoForm: React.FC = () => {
         precio: parseFloat(trat.precio),
       }
     ]);
-    setTratSeleccionado('');
+    setTratSeleccionado(null);
   };
 
   const quitarTratamiento = (index: number) => {
@@ -120,7 +152,7 @@ export const SeguimientoForm: React.FC = () => {
 
   const agregarMedicamento = () => {
     if (!medSeleccionado) return;
-    const id = Number(medSeleccionado);
+    const id = medSeleccionado;
     if (filasMedicamento.some(f => f.id_medicamento === id)) {
       toast.error('Este medicamento ya fue agregado.');
       return;
@@ -137,7 +169,7 @@ export const SeguimientoForm: React.FC = () => {
         cantidad: 1,
       }
     ]);
-    setMedSeleccionado('');
+    setMedSeleccionado(null);
   };
 
   const quitarMedicamento = (index: number) => {
@@ -263,7 +295,10 @@ export const SeguimientoForm: React.FC = () => {
                 <input
                   type="date"
                   {...register('fecha', { required: 'Fecha requerida' })}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  readOnly={!!citaFecha}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                    citaFecha ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed font-medium' : 'bg-white border-gray-300'
+                  }`}
                 />
               </FormField>
             </div>
@@ -272,7 +307,10 @@ export const SeguimientoForm: React.FC = () => {
                 <input
                   type="time"
                   {...register('hora', { required: 'Hora requerida' })}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  readOnly={!!citaHora}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                    citaHora ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed font-medium' : 'bg-white border-gray-300'
+                  }`}
                 />
               </FormField>
             </div>
@@ -304,16 +342,14 @@ export const SeguimientoForm: React.FC = () => {
           )}
 
           <div className="flex items-center gap-2">
-            <select
+            <SearchableSelect
+              options={tratamientoOptions}
               value={tratSeleccionado}
-              onChange={(e) => setTratSeleccionado(e.target.value)}
-              className="block w-full md:w-1/2 border-gray-300 rounded-md border focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-            >
-              <option value="">Seleccione un tratamiento...</option>
-              {tratamientosDisponibles.map(t => (
-                <option key={t.id} value={t.id}>{t.nombre} - ${t.precio}</option>
-              ))}
-            </select>
+              onChange={(id) => setTratSeleccionado(id || null)}
+              placeholder="Buscar tratamiento por nombre, ID o precio..."
+              emptyMessage="No hay tratamientos que coincidan"
+              className="w-full md:w-1/2"
+            />
             <button
               type="button"
               onClick={agregarTratamiento}
@@ -376,16 +412,14 @@ export const SeguimientoForm: React.FC = () => {
           )}
 
           <div className="flex items-center gap-2">
-            <select
+            <SearchableSelect
+              options={medicamentoOptions}
               value={medSeleccionado}
-              onChange={(e) => setMedSeleccionado(e.target.value)}
-              className="block w-full md:w-1/2 border-gray-300 rounded-md border focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2 px-3"
-            >
-              <option value="">Seleccione un medicamento...</option>
-              {medicamentosDisponibles.filter(m => m.cantidad > 0).map(m => (
-                <option key={m.id} value={m.id}>{m.nombre} (Stock: {m.cantidad}) - ${m.precio}</option>
-              ))}
-            </select>
+              onChange={(id) => setMedSeleccionado(id || null)}
+              placeholder="Buscar medicamento por nombre, ID o precio..."
+              emptyMessage="No hay medicamentos que coincidan"
+              className="w-full md:w-1/2"
+            />
             <button
               type="button"
               onClick={agregarMedicamento}

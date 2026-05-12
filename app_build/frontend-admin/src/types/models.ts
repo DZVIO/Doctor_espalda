@@ -17,12 +17,53 @@ export interface Administrador {
   updated_at: string;
 }
 
+export interface FormaFarmaceutica {
+  id: number;
+  forma: string;
+  estado: 'activo' | 'inactivo';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UnidadMedida {
+  id: number;
+  unidad: string;
+  abreviatura: string;
+  tipo: 'masa' | 'volumen' | 'unidad' | 'otro';
+  estado: 'activo' | 'inactivo';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Marca {
+  id: number;
+  marca: string;
+  estado: 'activo' | 'inactivo';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Presentacion {
+  id: number;
+  forma_farmaceutica: number;
+  forma_farmaceutica_detalle?: FormaFarmaceutica;
+  cantidad: string;
+  concentracion: string | null;
+  unidad_medida: number;
+  unidad_medida_detalle?: UnidadMedida;
+  estado: 'activo' | 'inactivo';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Medicamento {
   id: number;
   nombre: string;
   descripcion: string;
-  presentacion: string;
-  unidad_medida: string;
+  marca: number | null;
+  marca_detalle?: Marca;
+  presentacion: number | null;
+  presentacion_detalle?: Presentacion;
   cantidad: number;
   precio: string;
   estado: 'activo' | 'inactivo';
@@ -47,6 +88,7 @@ export interface Paciente {
   cedula: string;
   correo: string;
   numero: string;
+  region?: string;
   estado: 'activo' | 'inactivo';
   created_at: string;
   updated_at: string;

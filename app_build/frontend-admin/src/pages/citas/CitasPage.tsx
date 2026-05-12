@@ -7,6 +7,7 @@ import { DataTable } from '../../components/ui/DataTable';
 import type { Column } from '../../components/ui/DataTable';
 import { Modal } from '../../components/ui/Modal';
 import { useApi } from '../../hooks/useApi';
+import { formatDate } from '../../utils/dateUtils';
 
 export const CitasPage: React.FC = () => {
   const [citas, setCitas] = useState<Agendamiento[]>([]);
@@ -46,7 +47,7 @@ export const CitasPage: React.FC = () => {
   };
 
   const columns: Column<Agendamiento>[] = [
-    { header: 'Fecha', accessor: 'fecha', sortable: true },
+    { header: 'Fecha', accessor: (cita) => formatDate(cita.fecha), sortable: true },
     { header: 'Entrada', accessor: 'hora_ingreso', sortable: true },
     { header: 'Salida', accessor: 'hora_salida', sortable: true },
     { 

@@ -13,9 +13,9 @@ class PacienteViewSet(viewsets.ModelViewSet):
     serializer_class = PacienteSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['estado', 'cedula']
-    search_fields = ['nombre', 'apellido', 'cedula']
+    search_fields = ['nombre', 'apellido', 'cedula', 'numero', 'correo']
     ordering_fields = ['created_at', 'nombre', 'apellido']
-    ordering = ['created_at']
+    ordering = ['-created_at']
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

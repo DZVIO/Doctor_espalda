@@ -4,6 +4,7 @@ import { agendamientoService } from '../../services/agendamientos.service';
 import { pacienteService } from '../../services/pacientes.service';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useApi } from '../../hooks/useApi';
 import type { Agendamiento, Paciente } from '../../types/models';
 
@@ -19,7 +20,7 @@ export const CitaForm: React.FC = () => {
     fecha: new Date().toISOString().split('T')[0],
     hora_ingreso: '',
     hora_salida: '',
-    id_paciente: initialPacienteId,
+    id_paciente: initialPacienteId ? parseInt(initialPacienteId) : 0,
   });
 
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -43,6 +44,10 @@ export const CitaForm: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePacienteChange = (id: number) => {
+    setFormData((prev) => ({ ...prev, id_paciente: id || 0 }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,22 +85,29 @@ export const CitaForm: React.FC = () => {
             )}
 
             <FormField label="Paciente *" id="id_paciente">
-              <select
-                name="id_paciente"
-                id="id_paciente"
-                value={formData.id_paciente}
-                onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
-                required
-                disabled={isEdit}
-              >
-                <option value="">Seleccione un paciente</option>
-                {pacientes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre} {p.apellido} ({p.cedula})
-                  </option>
-                ))}
-              </select>
+              {isEdit ? (
+                <input
+                  type="text"
+                  value={(() => {
+                    const p = pacientes.find(p => p.id === formData.id_paciente);
+                    return p ? `${p.nombre} ${p.apellido} (${p.cedula})` : 'Cargando...';
+                  })()}
+                  className="mt-1 block w-full border border-gray-300 bg-gray-100 rounded-md shadow-sm p-2 text-gray-700 sm:text-sm"
+                  readOnly
+                  disabled
+                />
+              ) : (
+                <SearchableSelect
+                  options={pacientes.map(p => ({
+                    id: p.id,
+                    label: `${p.nombre} ${p.apellido}`,
+                    sublabel: p.cedula
+                  }))}
+                  value={formData.id_paciente || null}
+                  onChange={handlePacienteChange}
+                  placeholder="Buscar por nombre o cédula..."
+                />
+              )}
             </FormField>
 
             <FormField label="Fecha *" id="fecha">

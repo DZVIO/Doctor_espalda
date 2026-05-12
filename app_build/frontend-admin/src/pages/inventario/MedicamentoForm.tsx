@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { medicamentoService } from '../../services/medicamentos.service';
+import { marcaService } from '../../services/marcas.service';
+import { presentacionService } from '../../services/presentaciones.service';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 import { useApi } from '../../hooks/useApi';
-import type { Medicamento } from '../../types/models';
+import type { Medicamento, Marca, Presentacion } from '../../types/models';
 
 export const MedicamentoForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,41 +16,63 @@ export const MedicamentoForm: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Medicamento>>({
     nombre: '',
     descripcion: '',
-    presentacion: '',
-    unidad_medida: '',
+    marca: null,
+    presentacion: null,
     cantidad: 0,
     precio: '0.00',
     estado: 'activo',
   });
 
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [presentaciones, setPresentaciones] = useState<Presentacion[]>([]);
+
   const { loading: saving, error, setError, request } = useApi();
   const { loading: fetching, request: fetchRequest } = useApi();
+  const { request: lookupRequest } = useApi();
 
   useEffect(() => {
+    lookupRequest(marcaService.getAll({ estado: 'activo' }), {
+      onSuccess: (data) => setMarcas(data),
+    });
+    lookupRequest(presentacionService.getAll({ estado: 'activo' }), {
+      onSuccess: (data) => setPresentaciones(data),
+    });
+
     if (isEdit && id) {
       fetchRequest(medicamentoService.getById(parseInt(id)), {
         onSuccess: (data) => setFormData(data),
       });
     }
-  }, [isEdit, id, fetchRequest]);
+  }, [isEdit, id, fetchRequest, lookupRequest]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Handle integer parsing for foreign keys
+    if (name === 'marca' || name === 'presentacion') {
+        const val = value ? parseInt(value) : null;
+        setFormData((prev) => ({ ...prev, [name]: val }));
+    } else {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simple client-side validation
-    if (!formData.nombre || !formData.presentacion || !formData.unidad_medida) {
-      setError('Por favor complete todos los campos requeridos (Nombre, Presentación, Unidad).');
+    if (!formData.nombre || !formData.precio) {
+      setError('Por favor complete todos los campos requeridos.');
       return;
     }
 
+    const dataToSend = {
+      ...formData,
+      marca: formData.marca || null,
+      presentacion: formData.presentacion || null,
+    };
+
     const apiCall = isEdit 
-      ? medicamentoService.update(parseInt(id!), formData)
-      : medicamentoService.create(formData);
+      ? medicamentoService.update(parseInt(id!), dataToSend)
+      : medicamentoService.create(dataToSend);
 
     await request(apiCall, {
       successMessage: `Medicamento ${isEdit ? 'actualizado' : 'creado'} correctamente`,
@@ -101,35 +125,41 @@ export const MedicamentoForm: React.FC = () => {
             </FormField>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Presentación *" id="presentacion">
-                <input
-                  type="text"
-                  name="presentacion"
-                  id="presentacion"
-                  value={formData.presentacion}
+              <FormField label="Marca" id="marca">
+                <select
+                  name="marca"
+                  id="marca"
+                  value={formData.marca || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                  placeholder="Ej: Tableta, Jarabe"
-                />
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                >
+                  <option value="">Seleccione una marca</option>
+                  {marcas.map(m => (
+                    <option key={m.id} value={m.id}>{m.marca}</option>
+                  ))}
+                </select>
               </FormField>
 
-              <FormField label="Unidad de Medida *" id="unidad_medida">
-                <input
-                  type="text"
-                  name="unidad_medida"
-                  id="unidad_medida"
-                  value={formData.unidad_medida}
+              <FormField label="Presentación" id="presentacion">
+                <select
+                  name="presentacion"
+                  id="presentacion"
+                  value={formData.presentacion || ''}
                   onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                  placeholder="Ej: mg, ml"
-                />
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                >
+                  <option value="">Seleccione una presentación</option>
+                  {presentaciones.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.forma_farmaceutica_detalle?.forma} · {p.cantidad} · {p.unidad_medida_detalle?.abreviatura}
+                    </option>
+                  ))}
+                </select>
               </FormField>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Cantidad" id="cantidad">
+              <FormField label="Cantidad en Stock" id="cantidad">
                 <input
                   type="number"
                   name="cantidad"
@@ -140,7 +170,7 @@ export const MedicamentoForm: React.FC = () => {
                 />
               </FormField>
 
-              <FormField label="Precio" id="precio">
+              <FormField label="Precio *" id="precio">
                 <input
                   type="number"
                   step="0.01"
@@ -149,6 +179,7 @@ export const MedicamentoForm: React.FC = () => {
                   value={formData.precio}
                   onChange={handleChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
                 />
               </FormField>
             </div>
