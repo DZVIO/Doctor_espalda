@@ -117,11 +117,11 @@ export const SeguimientoForm: React.FC = () => {
 
   const medicamentoOptions = useMemo(() => {
     return medicamentosDisponibles
-      .filter(m => m.cantidad > 0)
+      .filter(m => m.stock > 0)
       .map(m => ({
         id: m.id,
         label: m.nombre,
-        sublabel: `$${m.precio}  (Stock: ${m.cantidad})`,
+        sublabel: `$${m.precio}  (Stock: ${m.stock})`,
         disabled: filasMedicamento.some(f => f.id_medicamento === m.id),
       }));
   }, [medicamentosDisponibles, filasMedicamento]);
@@ -165,7 +165,7 @@ export const SeguimientoForm: React.FC = () => {
         id_medicamento: med.id,
         nombre: med.nombre,
         precio_unitario: parseFloat(med.precio),
-        stock_disponible: med.cantidad,
+        stock_disponible: med.stock,
         cantidad: 1,
       }
     ]);

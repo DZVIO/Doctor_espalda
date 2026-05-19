@@ -7,6 +7,8 @@ import { InventarioPage } from '../pages/inventario/InventarioPage';
 import { MedicamentoForm } from '../pages/inventario/MedicamentoForm';
 import { MarcasPage } from '../pages/inventario/MarcasPage';
 import { MarcaForm } from '../pages/inventario/MarcaForm';
+import { CategoriasPage } from '../pages/inventario/CategoriasPage';
+import { CategoriaForm } from '../pages/inventario/CategoriaForm';
 import { FormasFarmaceuticasPage } from '../pages/inventario/FormasFarmaceuticasPage';
 import { FormaFarmaceuticaForm } from '../pages/inventario/FormaFarmaceuticaForm';
 import { UnidadesMedidaPage } from '../pages/inventario/UnidadesMedidaPage';
@@ -53,6 +55,9 @@ export const router = createBrowserRouter([
               { path: 'marcas', element: <MarcasPage /> },
               { path: 'marcas/nuevo', element: <MarcaForm /> },
               { path: 'marcas/:id/editar', element: <MarcaForm /> },
+              { path: 'categorias', element: <CategoriasPage /> },
+              { path: 'categorias/nuevo', element: <CategoriaForm /> },
+              { path: 'categorias/:id/editar', element: <CategoriaForm /> },
               { path: 'formas-farmaceuticas', element: <FormasFarmaceuticasPage /> },
               { path: 'formas-farmaceuticas/nuevo', element: <FormaFarmaceuticaForm /> },
               { path: 'formas-farmaceuticas/:id/editar', element: <FormaFarmaceuticaForm /> },

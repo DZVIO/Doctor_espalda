@@ -15,7 +15,6 @@ export const PresentacionForm: React.FC = () => {
   
   const [formData, setFormData] = useState<Partial<Presentacion>>({
     forma_farmaceutica: 0,
-    cantidad: '',
     concentracion: '',
     unidad_medida: 0,
     estado: 'activo',
@@ -69,7 +68,6 @@ export const PresentacionForm: React.FC = () => {
 
     const dataToSend = {
       ...formData,
-      concentracion: formData.concentracion || null,
     };
 
     const apiCall = isEdit 
@@ -120,13 +118,13 @@ export const PresentacionForm: React.FC = () => {
             </FormField>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Cantidad *" id="cantidad">
+              <FormField label="Concentración *" id="concentracion">
                 <input
                   type="number"
                   step="0.01"
-                  name="cantidad"
-                  id="cantidad"
-                  value={formData.cantidad}
+                  name="concentracion"
+                  id="concentracion"
+                  value={formData.concentracion}
                   onChange={handleChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   required
@@ -150,18 +148,6 @@ export const PresentacionForm: React.FC = () => {
                 </select>
               </FormField>
             </div>
-
-            <FormField label="Concentración (Opcional)" id="concentracion">
-              <input
-                type="text"
-                name="concentracion"
-                id="concentracion"
-                value={formData.concentracion || ''}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="Ej: 500mg/5ml"
-              />
-            </FormField>
 
             <FormField label="Estado" id="estado">
               <select

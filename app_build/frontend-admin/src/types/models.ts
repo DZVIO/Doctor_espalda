@@ -43,12 +43,19 @@ export interface Marca {
   updated_at: string;
 }
 
+export interface Categoria {
+  id: number;
+  categoria: string;
+  estado: 'activo' | 'inactivo';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Presentacion {
   id: number;
   forma_farmaceutica: number;
   forma_farmaceutica_detalle?: FormaFarmaceutica;
-  cantidad: string;
-  concentracion: string | null;
+  concentracion: string;
   unidad_medida: number;
   unidad_medida_detalle?: UnidadMedida;
   estado: 'activo' | 'inactivo';
@@ -62,9 +69,11 @@ export interface Medicamento {
   descripcion: string;
   marca: number | null;
   marca_detalle?: Marca;
+  categoria: number | null;
+  categoria_detalle?: Categoria;
   presentacion: number | null;
   presentacion_detalle?: Presentacion;
-  cantidad: number;
+  stock: number;
   precio: string;
   estado: 'activo' | 'inactivo';
   created_at: string;

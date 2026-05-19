@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { medicamentoService } from '../../services/medicamentos.service';
 import { marcaService } from '../../services/marcas.service';
 import { presentacionService } from '../../services/presentaciones.service';
+import { categoriaService } from '../../services/categorias.service';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 import { useApi } from '../../hooks/useApi';
-import type { Medicamento, Marca, Presentacion } from '../../types/models';
+import type { Medicamento, Marca, Presentacion, Categoria } from '../../types/models';
 
 export const MedicamentoForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,13 +18,15 @@ export const MedicamentoForm: React.FC = () => {
     nombre: '',
     descripcion: '',
     marca: null,
+    categoria: null,
     presentacion: null,
-    cantidad: 0,
+    stock: 0,
     precio: '0.00',
     estado: 'activo',
   });
 
   const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [presentaciones, setPresentaciones] = useState<Presentacion[]>([]);
 
   const { loading: saving, error, setError, request } = useApi();
@@ -33,6 +36,9 @@ export const MedicamentoForm: React.FC = () => {
   useEffect(() => {
     lookupRequest(marcaService.getAll({ estado: 'activo' }), {
       onSuccess: (data) => setMarcas(data),
+    });
+    lookupRequest(categoriaService.getAll({ estado: 'activo' }), {
+      onSuccess: (data) => setCategorias(data),
     });
     lookupRequest(presentacionService.getAll({ estado: 'activo' }), {
       onSuccess: (data) => setPresentaciones(data),
@@ -48,7 +54,7 @@ export const MedicamentoForm: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     // Handle integer parsing for foreign keys
-    if (name === 'marca' || name === 'presentacion') {
+    if (name === 'marca' || name === 'categoria' || name === 'presentacion') {
         const val = value ? parseInt(value) : null;
         setFormData((prev) => ({ ...prev, [name]: val }));
     } else {
@@ -67,6 +73,7 @@ export const MedicamentoForm: React.FC = () => {
     const dataToSend = {
       ...formData,
       marca: formData.marca || null,
+      categoria: formData.categoria || null,
       presentacion: formData.presentacion || null,
     };
 
@@ -140,6 +147,23 @@ export const MedicamentoForm: React.FC = () => {
                 </select>
               </FormField>
 
+              <FormField label="Categoría" id="categoria">
+                <select
+                  name="categoria"
+                  id="categoria"
+                  value={formData.categoria || ''}
+                  onChange={handleChange}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                >
+                  <option value="">Seleccione una categoría</option>
+                  {categorias.map(c => (
+                    <option key={c.id} value={c.id}>{c.categoria}</option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="Presentación" id="presentacion">
                 <select
                   name="presentacion"
@@ -151,20 +175,18 @@ export const MedicamentoForm: React.FC = () => {
                   <option value="">Seleccione una presentación</option>
                   {presentaciones.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.forma_farmaceutica_detalle?.forma} · {p.cantidad} · {p.unidad_medida_detalle?.abreviatura}
+                      {p.forma_farmaceutica_detalle?.forma} · {p.concentracion} · {p.unidad_medida_detalle?.abreviatura}
                     </option>
                   ))}
                 </select>
               </FormField>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Cantidad en Stock" id="cantidad">
+              <FormField label="Stock" id="stock">
                 <input
                   type="number"
-                  name="cantidad"
-                  id="cantidad"
-                  value={formData.cantidad}
+                  name="stock"
+                  id="stock"
+                  value={formData.stock}
                   onChange={handleChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />

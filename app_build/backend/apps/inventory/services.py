@@ -20,7 +20,7 @@ class MedicamentoService:
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
 
-            if instance.cantidad == 0:
+            if instance.stock == 0:
                 instance.estado = 'inactivo'
 
             instance.save()

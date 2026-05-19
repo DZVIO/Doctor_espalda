@@ -387,7 +387,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
                               return {
                                 id: m.id,
                                 label: m.nombre,
-                                sublabel: `$${m.precio}  (Stock: ${m.cantidad})`,
+                                sublabel: `$${m.precio}  (Stock: ${m.stock})`,
                                 disabled: isSelectedByAnother,
                               };
                             })}

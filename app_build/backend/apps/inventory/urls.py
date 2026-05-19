@@ -4,13 +4,15 @@ from .views import (
     UnidadMedidaViewSet,
     MarcaViewSet,
     PresentacionViewSet,
-    MedicamentoViewSet
+    MedicamentoViewSet,
+    CategoriaViewSet
 )
 
 router = DefaultRouter()
 router.register(r'formas-farmaceuticas', FormaFarmaceuticaViewSet)
 router.register(r'unidades-medida', UnidadMedidaViewSet)
 router.register(r'marcas', MarcaViewSet)
+router.register(r'categorias', CategoriaViewSet)
 router.register(r'presentaciones', PresentacionViewSet)
 router.register(r'medicamentos', MedicamentoViewSet)
 

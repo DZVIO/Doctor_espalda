@@ -26,13 +26,13 @@ const navigation: NavItem[] = [
   { name: 'Citas', href: '/citas', icon: CalendarDaysIcon, exact: false },
   { name: 'Tratamientos', href: '/tratamientos', icon: BeakerIcon, exact: false },
   { 
-    name: 'Inventario', 
+    name: 'Medicamentos', 
     href: '/inventario', 
     icon: ArchiveBoxIcon, 
     exact: true,
     children: [
-      { name: 'Medicamentos', href: '/inventario', exact: true },
       { name: 'Marcas', href: '/inventario/marcas', exact: true },
+      { name: 'Categorías', href: '/inventario/categorias', exact: true },
       { 
         name: 'Presentaciones', 
         href: '/inventario/presentaciones', 
@@ -66,7 +66,8 @@ const NavItemRenderer: React.FC<{ item: NavItem; depth?: number }> = ({ item, de
 
   const isActive = isPathActive(item.href, item.exact);
   const hasActiveChild = isAnyChildActive(item.children);
-  const shouldBeOpen = isActive || hasActiveChild || location.pathname.startsWith('/inventario');
+  const isModuleRoot = depth === 0 && location.pathname.startsWith(item.href) && item.href !== '/';
+  const shouldBeOpen = isActive || hasActiveChild || isModuleRoot;
 
   // We maintain local open state but sync it if a child becomes active
   const [isOpen, setIsOpen] = useState(shouldBeOpen);
@@ -127,11 +128,17 @@ const NavItemRenderer: React.FC<{ item: NavItem; depth?: number }> = ({ item, de
         )}
       </a>
       
-      {item.children && isOpen && (
-        <div className="mt-1 space-y-1">
-          {item.children.map((child, index) => (
-            <NavItemRenderer key={`${child.name}-${index}`} item={child} depth={depth + 1} />
-          ))}
+      {item.children && (
+        <div 
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isOpen ? 'max-h-96' : 'max-h-0'
+          }`}
+        >
+          <div className="mt-1 space-y-1">
+            {item.children.map((child, index) => (
+              <NavItemRenderer key={`${child.name}-${index}`} item={child} depth={depth + 1} />
+            ))}
+          </div>
         </div>
       )}
     </div>

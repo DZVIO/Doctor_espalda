@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { presentacionService } from '../../services/presentaciones.service';
-import { formaFarmaceuticaService } from '../../services/formas-farmaceuticas.service';
-import { unidadMedidaService } from '../../services/unidades-medida.service';
-import type { Presentacion, FormaFarmaceutica, UnidadMedida } from '../../types/models';
+import type { Presentacion } from '../../types/models';
 import { DataTable } from '../../components/ui/DataTable';
 import type { Column } from '../../components/ui/DataTable';
 import { Badge } from '../../components/ui/Badge';
@@ -14,8 +12,6 @@ import { useApi } from '../../hooks/useApi';
 
 export const PresentacionesPage: React.FC = () => {
   const [presentaciones, setPresentaciones] = useState<Presentacion[]>([]);
-  const [formas, setFormas] = useState<FormaFarmaceutica[]>([]);
-  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPresentacion, setSelectedPresentacion] = useState<Presentacion | null>(null);
@@ -70,9 +66,8 @@ export const PresentacionesPage: React.FC = () => {
   const columns: Column<Presentacion>[] = [
     { header: 'ID', accessor: 'id', sortable: true },
     { header: 'Forma Farmacéutica', accessor: (p) => p.forma_farmaceutica_detalle?.forma || 'N/A', sortable: true },
-    { header: 'Cantidad', accessor: 'cantidad', sortable: true },
+    { header: 'Concentración', accessor: 'concentracion', sortable: true },
     { header: 'Unidad', accessor: (p) => p.unidad_medida_detalle?.abreviatura || 'N/A' },
-    { header: 'Concentración', accessor: (p) => p.concentracion || '-' },
     { header: 'Estado', accessor: (p) => <Badge status={p.estado} /> },
     {
       header: 'Acciones',
@@ -112,7 +107,7 @@ export const PresentacionesPage: React.FC = () => {
       </div>
 
       <div className="flex-shrink-0 bg-white p-4 rounded-lg shadow mb-4 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-        <SearchInput onSearch={setSearchTerm} placeholder="Buscar concentración..." />
+        <SearchInput onSearch={setSearchTerm} placeholder="Buscar..." />
         
         <div className="flex items-center space-x-4">
           <label htmlFor="status" className="text-sm font-medium text-gray-700">Estado:</label>

@@ -65,7 +65,7 @@ class SeguimientoService:
             for detalle in detalles:
                 if detalle.id_medicamento:
                     med = detalle.id_medicamento
-                    med.cantidad += detalle.cantidad
+                    med.stock += detalle.cantidad
                     if med.estado == 'inactivo':
                         med.estado = 'activo'
                     med.save()
@@ -105,11 +105,11 @@ class DetalleSeguimientoService:
                 if exists:
                     raise ValueError("Este medicamento ya está registrado en este seguimiento. Modifica la cantidad existente.")
                     
-                if medicamento.cantidad < cantidad:
-                    raise ValueError("Stock insuficiente.")
+                if medicamento.stock < cantidad:
+                    raise ValueError(f"Stock insuficiente para {medicamento.nombre}. Disponible: {medicamento.stock}")
                 
-                medicamento.cantidad -= cantidad
-                if medicamento.cantidad == 0:
+                medicamento.stock -= cantidad
+                if medicamento.stock == 0:
                     medicamento.estado = 'inactivo'
                 medicamento.save()
 
@@ -162,17 +162,17 @@ class DetalleSeguimientoService:
                     # Restore previous stock
                     if instance.id_medicamento:
                         old_med = instance.id_medicamento
-                        old_med.cantidad += instance.cantidad
+                        old_med.stock += instance.cantidad
                         if old_med.estado == 'inactivo':
                             old_med.estado = 'activo'
                         old_med.save()
                     
                     # Deduct new stock
-                    if medicamento.cantidad < cantidad:
-                        raise ValueError("Stock insuficiente para el medicamento seleccionado.")
+                    if medicamento.stock < cantidad:
+                        raise ValueError(f"Stock insuficiente para {medicamento.nombre}. Disponible: {medicamento.stock}")
                     
-                    medicamento.cantidad -= cantidad
-                    if medicamento.cantidad == 0:
+                    medicamento.stock -= cantidad
+                    if medicamento.stock == 0:
                         medicamento.estado = 'inactivo'
                     medicamento.save()
                 
@@ -195,7 +195,7 @@ class DetalleSeguimientoService:
                 
             if instance.id_medicamento:
                 med = instance.id_medicamento
-                med.cantidad += instance.cantidad
+                med.stock += instance.cantidad
                 if med.estado == 'inactivo':
                     med.estado = 'activo'
                 med.save()

@@ -4,10 +4,10 @@ from decimal import Decimal
 from .models import Tratamiento, Seguimiento, DetalleSeguimiento
 from .services import TratamientoService, SeguimientoService, DetalleSeguimientoService
 from apps.patients.models import Paciente
-from apps.inventory.models import Medicamento
+from apps.inventory.models import Medicamento, FormaFarmaceutica, UnidadMedida, Presentacion
 
 class TratamientoServiceTest(TestCase):
-
+    # ... test_create_success, etc. ...
     def test_create_success(self):
         t = TratamientoService.create_tratamiento({
             'nombre': 'Ajuste lumbar',
@@ -55,9 +55,16 @@ class DetalleSeguimientoServiceTest(TestCase):
         self.tratamiento = Tratamiento.objects.create(
             nombre='Masaje', precio=Decimal('60.00'), estado='activo',
         )
+        self.forma = FormaFarmaceutica.objects.create(forma='Crema')
+        self.unidad = UnidadMedida.objects.create(unidad='Gramo', abreviatura='g', tipo='masa')
+        self.presentacion = Presentacion.objects.create(
+            forma_farmaceutica=self.forma,
+            concentracion=100,
+            unidad_medida=self.unidad
+        )
         self.medicamento = Medicamento.objects.create(
-            nombre='Crema', presentacion='Tubo', unidad_medida='g',
-            cantidad=2, precio=Decimal('30.00'),
+            nombre='Crema', presentacion=self.presentacion,
+            stock=2, precio=Decimal('30.00'),
         )
         self.seguimiento = Seguimiento.objects.create(
             fecha='2025-07-01', hora='10:00:00', id_paciente=self.paciente
@@ -76,7 +83,7 @@ class DetalleSeguimientoServiceTest(TestCase):
             'cantidad': 1
         })
         self.medicamento.refresh_from_db()
-        self.assertEqual(self.medicamento.cantidad, 1)
+        self.assertEqual(self.medicamento.stock, 1)
         self.seguimiento.refresh_from_db()
         self.assertEqual(self.seguimiento.total, Decimal('30.00'))
 
@@ -90,7 +97,7 @@ class DetalleSeguimientoServiceTest(TestCase):
         self.assertIn('no está disponible', str(ctx.exception))
 
     def test_create_with_zero_stock_medicamento_fails(self):
-        self.medicamento.cantidad = 0
+        self.medicamento.stock = 0
         self.medicamento.estado = 'inactivo'
         self.medicamento.save()
         with self.assertRaises(ValueError) as ctx:
@@ -114,7 +121,7 @@ class DetalleSeguimientoServiceTest(TestCase):
             'cantidad': 2
         })
         self.medicamento.refresh_from_db()
-        self.assertEqual(self.medicamento.cantidad, 0)
+        self.assertEqual(self.medicamento.stock, 0)
         self.assertEqual(self.medicamento.estado, 'inactivo')
 
     def test_delete_detalle_reverts_stock(self):
@@ -126,12 +133,12 @@ class DetalleSeguimientoServiceTest(TestCase):
             'id_tratamiento': self.tratamiento
         })
         self.medicamento.refresh_from_db()
-        self.assertEqual(self.medicamento.cantidad, 0)
+        self.assertEqual(self.medicamento.stock, 0)
 
         DetalleSeguimientoService.delete_detalle(detalle)
         
         self.medicamento.refresh_from_db()
-        self.assertEqual(self.medicamento.cantidad, 2)
+        self.assertEqual(self.medicamento.stock, 2)
         self.assertEqual(self.medicamento.estado, 'activo')
         
         self.seguimiento.refresh_from_db()

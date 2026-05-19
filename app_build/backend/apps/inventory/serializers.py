@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import FormaFarmaceutica, UnidadMedida, Marca, Presentacion, Medicamento
+from .models import FormaFarmaceutica, UnidadMedida, Marca, Presentacion, Medicamento, Categoria
 
 class FormaFarmaceuticaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,10 +19,16 @@ class MarcaSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
 class PresentacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Presentacion
-        fields = '__all__'
+        fields = ['id', 'forma_farmaceutica', 'concentracion', 'unidad_medida', 'estado', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def to_representation(self, instance):
@@ -33,8 +39,8 @@ class PresentacionSerializer(serializers.ModelSerializer):
 
 class MedicamentoSerializer(serializers.ModelSerializer):
     def validate(self, data):
-        if 'cantidad' in data and data['cantidad'] < 0:
-            raise serializers.ValidationError({"error": "El campo cantidad no puede ser negativo o cero."})
+        if 'stock' in data and data['stock'] < 0:
+            raise serializers.ValidationError({"error": "El campo stock no puede ser negativo o cero."})
         if 'precio' in data and data['precio'] <= 0:
             raise serializers.ValidationError({"error": "El campo precio no puede ser negativo o cero."})
         return data
@@ -42,8 +48,8 @@ class MedicamentoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medicamento
         fields = [
-            'id', 'nombre', 'descripcion', 'marca', 'presentacion',
-            'cantidad', 'precio', 'estado',
+            'id', 'nombre', 'descripcion', 'marca', 'categoria', 'presentacion',
+            'stock', 'precio', 'estado',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -51,5 +57,6 @@ class MedicamentoSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         response = super().to_representation(instance)
         response['marca_detalle'] = MarcaSerializer(instance.marca).data if instance.marca else None
+        response['categoria_detalle'] = CategoriaSerializer(instance.categoria).data if instance.categoria else None
         response['presentacion_detalle'] = PresentacionSerializer(instance.presentacion).data if instance.presentacion else None
         return response
