@@ -1,6 +1,6 @@
 from django.db import IntegrityError, transaction
 from django.db.models import RestrictedError
-from .models import Tratamiento, Seguimiento, DetalleSeguimiento
+from .models import Tratamiento, Sesion, DetalleSesion
 
 class TratamientoService:
     @staticmethod
@@ -26,15 +26,15 @@ class TratamientoService:
             instance.delete()
         except (IntegrityError, RestrictedError):
             raise ValueError(
-                "No se puede eliminar este tratamiento porque tiene registros de seguimiento asociados."
+                "No se puede eliminar este tratamiento porque tiene registros de sesión asociados."
             )
 
-class SeguimientoService:
+class SesionService:
     @staticmethod
-    def calcular_precio_total(seguimiento_id):
+    def calcular_precio_total(sesion_id):
         with transaction.atomic():
-            seguimiento = Seguimiento.objects.select_for_update().get(id=seguimiento_id)
-            detalles = DetalleSeguimiento.objects.filter(id_venta=seguimiento)
+            sesion = Sesion.objects.select_for_update().get(id=sesion_id)
+            detalles = DetalleSesion.objects.filter(id_sesion=sesion)
             
             total = sum(
                 (d.id_tratamiento.precio * d.cantidad)
@@ -43,23 +43,31 @@ class SeguimientoService:
                 (d.id_medicamento.precio * d.cantidad)
                 for d in detalles if d.id_medicamento
             )
-            seguimiento.total = total
-            seguimiento.save(update_fields=['total'])
-            return seguimiento
+            sesion.total = total
+            sesion.save(update_fields=['total'])
+            
+            from apps.contabilidad.services import PagoService
+            PagoService.actualizar_saldo_por_sesion(sesion)
+            
+            return sesion
 
     @staticmethod
-    def create_seguimiento(validated_data):
-        return Seguimiento.objects.create(**validated_data)
+    def create_sesion(validated_data):
+        from apps.contabilidad.services import PagoService
+        with transaction.atomic():
+            sesion = Sesion.objects.create(**validated_data)
+            PagoService.crear_pago_automatico(sesion)
+            return sesion
 
     @staticmethod
-    def update_seguimiento(instance, validated_data):
+    def update_sesion(instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         return instance
 
     @staticmethod
-    def delete_seguimiento(instance):
+    def delete_sesion(instance):
         with transaction.atomic():
             detalles = list(instance.detalles.all())
             for detalle in detalles:
@@ -71,9 +79,9 @@ class SeguimientoService:
                     med.save()
             instance.delete()
 
-class DetalleSeguimientoService:
+class DetalleSesionService:
     @staticmethod
-    def create_detalle(seguimiento, validated_data):
+    def create_detalle(sesion, validated_data):
         tratamiento = validated_data.get('id_tratamiento')
         medicamento = validated_data.get('id_medicamento')
         cantidad = validated_data.get('cantidad', 1)
@@ -84,12 +92,12 @@ class DetalleSeguimientoService:
                     raise ValueError("El tratamiento seleccionado no está disponible.")
                     
                 # Duplication validation
-                exists = DetalleSeguimiento.objects.filter(
-                    id_venta=seguimiento,
+                exists = DetalleSesion.objects.filter(
+                    id_sesion=sesion,
                     id_tratamiento=tratamiento
                 ).exists()
                 if exists:
-                    raise ValueError("Este tratamiento ya fue aplicado en este seguimiento.")
+                    raise ValueError("Este tratamiento ya fue aplicado en esta sesión.")
                     
                 cantidad = 1  # For treatments it's always 1
 
@@ -98,12 +106,12 @@ class DetalleSeguimientoService:
                     raise ValueError("El medicamento seleccionado no está disponible (inactivo).")
                     
                 # Duplication validation
-                exists = DetalleSeguimiento.objects.filter(
-                    id_venta=seguimiento,
+                exists = DetalleSesion.objects.filter(
+                    id_sesion=sesion,
                     id_medicamento=medicamento
                 ).exists()
                 if exists:
-                    raise ValueError("Este medicamento ya está registrado en este seguimiento. Modifica la cantidad existente.")
+                    raise ValueError("Este medicamento ya está registrado en esta sesión. Modifica la cantidad existente.")
                     
                 if medicamento.stock < cantidad:
                     raise ValueError(f"Stock insuficiente para {medicamento.nombre}. Disponible: {medicamento.stock}")
@@ -113,14 +121,14 @@ class DetalleSeguimientoService:
                     medicamento.estado = 'inactivo'
                 medicamento.save()
 
-            detalle = DetalleSeguimiento.objects.create(
-                id_venta=seguimiento,
+            detalle = DetalleSesion.objects.create(
+                id_sesion=sesion,
                 id_tratamiento=tratamiento,
                 id_medicamento=medicamento,
                 cantidad=cantidad
             )
             
-            SeguimientoService.calcular_precio_total(seguimiento.id)
+            SesionService.calcular_precio_total(sesion.id)
             return detalle
 
     @staticmethod
@@ -135,12 +143,12 @@ class DetalleSeguimientoService:
                     raise ValueError("El tratamiento seleccionado no está disponible.")
                 
                 if instance.id_tratamiento != tratamiento:
-                    exists = DetalleSeguimiento.objects.filter(
-                        id_venta=instance.id_venta,
+                    exists = DetalleSesion.objects.filter(
+                        id_sesion=instance.id_sesion,
                         id_tratamiento=tratamiento
                     ).exists()
                     if exists:
-                        raise ValueError("Este tratamiento ya fue aplicado en este seguimiento.")
+                        raise ValueError("Este tratamiento ya fue aplicado en esta sesión.")
                 
                 instance.id_tratamiento = tratamiento
                 instance.cantidad = 1
@@ -150,12 +158,12 @@ class DetalleSeguimientoService:
                     raise ValueError("El medicamento seleccionado no está disponible (inactivo).")
                 
                 if instance.id_medicamento != medicamento:
-                    exists = DetalleSeguimiento.objects.filter(
-                        id_venta=instance.id_venta,
+                    exists = DetalleSesion.objects.filter(
+                        id_sesion=instance.id_sesion,
                         id_medicamento=medicamento
                     ).exists()
                     if exists:
-                        raise ValueError("Este medicamento ya está registrado en este seguimiento. Modifica la cantidad existente.")
+                        raise ValueError("Este medicamento ya está registrado en esta sesión. Modifica la cantidad existente.")
                 
                 # If changing the medication or quantity, adjust stock
                 if instance.id_medicamento != medicamento or instance.cantidad != cantidad:
@@ -180,18 +188,18 @@ class DetalleSeguimientoService:
                 instance.cantidad = cantidad
             
             instance.save()
-            SeguimientoService.calcular_precio_total(instance.id_venta.id)
+            SesionService.calcular_precio_total(instance.id_sesion.id)
             return instance
 
     @staticmethod
     def delete_detalle(instance):
         with transaction.atomic():
             # Validate if it's the last detail
-            seguimiento = instance.id_venta
-            all_detalles = DetalleSeguimiento.objects.filter(id_venta=seguimiento)
+            sesion = instance.id_sesion
+            all_detalles = DetalleSesion.objects.filter(id_sesion=sesion)
             
             if all_detalles.count() == 1:
-                raise ValueError("No se puede eliminar el único detalle del seguimiento. Un seguimiento no puede quedar vacío.")
+                raise ValueError("No se puede eliminar el único detalle de la sesión. Una sesión no puede quedar vacía.")
                 
             if instance.id_medicamento:
                 med = instance.id_medicamento
@@ -200,7 +208,7 @@ class DetalleSeguimientoService:
                     med.estado = 'activo'
                 med.save()
             
-            seguimiento_id = instance.id_venta.id
+            sesion_id = instance.id_sesion.id
             instance.delete()
             
-            SeguimientoService.calcular_precio_total(seguimiento_id)
+            SesionService.calcular_precio_total(sesion_id)

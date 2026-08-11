@@ -28,5 +28,5 @@ class PacienteService:
             instance.delete()
         except (IntegrityError, RestrictedError):
             raise ValueError(
-                "No se puede eliminar este paciente porque tiene agendamientos o seguimientos asociados."
+                "No se puede eliminar este paciente porque tiene agendamientos o sesiones asociadas."
             )

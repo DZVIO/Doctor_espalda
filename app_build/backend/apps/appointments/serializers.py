@@ -3,19 +3,19 @@ from .models import Agendamiento
 
 class AgendamientoSerializer(serializers.ModelSerializer):
     paciente_nombre = serializers.SerializerMethodField()
-    seguimientos = serializers.SerializerMethodField()
+    sesiones = serializers.SerializerMethodField()
 
     class Meta:
         model = Agendamiento
         fields = [
             'id', 'fecha', 'hora_ingreso', 'hora_salida',
-            'id_paciente', 'paciente_nombre', 'seguimientos', 'created_at', 'updated_at',
+            'id_paciente', 'paciente_nombre', 'sesiones', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-    def get_seguimientos(self, obj):
+    def get_sesiones(self, obj):
         result = []
-        for s in obj.seguimientos.prefetch_related('detalles__id_tratamiento', 'detalles__id_medicamento').all():
+        for s in obj.sesiones.prefetch_related('detalles__id_tratamiento', 'detalles__id_medicamento').all():
             tratamientos = []
             medicamentos = []
             for d in s.detalles.all():

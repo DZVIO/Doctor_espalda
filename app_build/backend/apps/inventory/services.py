@@ -36,5 +36,5 @@ class MedicamentoService:
             instance.delete()
         except (IntegrityError, RestrictedError):
             raise ValueError(
-                "No se puede eliminar este medicamento porque tiene registros de seguimiento asociados."
+                "No se puede eliminar este medicamento porque tiene registros de sesión asociados."
             )

@@ -4,7 +4,7 @@ from rest_framework import status
 from decimal import Decimal
 
 from .models import Medicamento, FormaFarmaceutica, UnidadMedida, Presentacion
-from apps.treatments.models import Tratamiento, Seguimiento
+from apps.treatments.models import Tratamiento, Sesion
 from apps.patients.models import Paciente
 
 
@@ -62,9 +62,9 @@ class MedicamentoServiceTest(TestCase):
         med.refresh_from_db()
         self.assertEqual(med.estado, 'inactivo')
 
-    def test_delete_sets_null_on_seguimiento(self):
+    def test_delete_sets_null_on_sesion(self):
         from .services import MedicamentoService
-        from apps.treatments.models import DetalleSeguimiento
+        from apps.treatments.models import DetalleSesion
         paciente = Paciente.objects.create(
             nombre='Juan', apellido='Perez', cedula='123456',
         )
@@ -75,12 +75,12 @@ class MedicamentoServiceTest(TestCase):
             nombre='Gel', presentacion=self.presentacion,
             stock=10, precio=Decimal('25.00'),
         )
-        seg = Seguimiento.objects.create(
+        seg = Sesion.objects.create(
             fecha='2025-01-01', hora='10:00:00',
             id_paciente=paciente,
         )
-        detalle = DetalleSeguimiento.objects.create(
-            id_venta=seg,
+        detalle = DetalleSesion.objects.create(
+            id_sesion=seg,
             id_tratamiento=tratamiento,
             id_medicamento=med,
             cantidad=1

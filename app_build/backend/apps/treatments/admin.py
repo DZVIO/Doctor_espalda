@@ -1,13 +1,13 @@
 from django.contrib import admin
-from .models import Tratamiento, Seguimiento, DetalleSeguimiento
+from .models import Tratamiento, Sesion, DetalleSesion
 
-class DetalleSeguimientoInline(admin.TabularInline):
-    model = DetalleSeguimiento
+class DetalleSesionInline(admin.TabularInline):
+    model = DetalleSesion
     extra = 1
 
-class SeguimientoAdmin(admin.ModelAdmin):
-    inlines = [DetalleSeguimientoInline]
+class SesionAdmin(admin.ModelAdmin):
+    inlines = [DetalleSesionInline]
 
 admin.site.register(Tratamiento)
-admin.site.register(Seguimiento, SeguimientoAdmin)
-admin.site.register(DetalleSeguimiento)
+admin.site.register(Sesion, SesionAdmin)
+admin.site.register(DetalleSesion)

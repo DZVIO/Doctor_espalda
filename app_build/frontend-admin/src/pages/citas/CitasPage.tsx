@@ -54,7 +54,19 @@ export const CitasPage: React.FC = () => {
       header: 'Paciente', 
       accessor: (cita) => (
         <div className="flex flex-col">
-          <span className="font-medium text-gray-900">{cita.paciente_nombre || 'N/A'}</span>
+          {cita.id_paciente ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/pacientes/${cita.id_paciente}`);
+              }}
+              className="text-left font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+            >
+              {cita.paciente_nombre || 'N/A'}
+            </button>
+          ) : (
+            <span className="font-medium text-gray-900">{cita.paciente_nombre || 'N/A'}</span>
+          )}
           <span className="text-xs text-gray-500">ID: {cita.id_paciente}</span>
         </div>
       ) 
@@ -139,6 +151,7 @@ export const CitasPage: React.FC = () => {
           columns={columns}
           data={citas}
           loading={loading}
+          onRowClick={(cita) => navigate('/sesiones/nuevo', { state: { pacienteId: cita.id_paciente, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
           fillHeight
         />
       </div>

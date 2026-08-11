@@ -131,7 +131,7 @@ export const TratamientosPage: React.FC = () => {
       >
         <p className="text-sm text-gray-500">
           ¿Estás seguro de que deseas eliminar el tratamiento <span className="font-bold">{selectedTrat?.nombre}</span>? 
-          Esta acción no se puede deshacer si tiene seguimientos asociados.
+          Esta acción no se puede deshacer si tiene sesiones asociadas.
         </p>
       </Modal>
     </div>

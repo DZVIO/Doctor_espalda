@@ -103,7 +103,7 @@ export interface Paciente {
   updated_at: string;
 }
 
-export interface SeguimientoMini {
+export interface SesionMini {
   id: number;
   fecha: string;
   total: string;
@@ -118,14 +118,14 @@ export interface Agendamiento {
   hora_salida: string;
   id_paciente: number;
   paciente_nombre?: string;
-  seguimientos?: SeguimientoMini[];
+  sesiones?: SesionMini[];
   created_at: string;
   updated_at: string;
 }
 
-export interface DetalleSeguimiento {
+export interface DetalleSesion {
   id?: number;
-  id_venta?: number;
+  id_sesion?: number;
   id_tratamiento?: number | null;
   id_medicamento?: number | null;
   cantidad: number;
@@ -135,14 +135,57 @@ export interface DetalleSeguimiento {
   updated_at?: string;
 }
 
-export interface Seguimiento {
+export interface Sesion {
   id?: number;
   fecha: string;
   hora: string;
   total?: string;
   id_paciente: number;
   id_agendamiento?: number | null;
-  detalles?: DetalleSeguimiento[];
+  detalles?: DetalleSesion[];
+  estado_pago?: 'pendiente' | 'pagado' | 'parcial' | 'sin_pago';
+  saldo_pendiente?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Pago {
+  id: number;
+  id_sesion: number;
+  sesion: {
+    id: number;
+    fecha: string;
+    hora: string;
+    total: string;
+    id_paciente: {
+      id: number;
+      nombre: string;
+      apellido: string;
+      cedula: string;
+    };
+    detalles: {
+      id: number;
+      tratamiento_nombre: string | null;
+      medicamento_nombre: string | null;
+      cantidad: number;
+    }[];
+  };
+  metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta' | 'otro' | null;
+  estado_pago: 'pendiente' | 'pagado' | 'parcial';
+  monto_pagado: string;
+  saldo_pendiente: string;
+  fecha_pago: string | null;
+  observaciones: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetricasFinancieras {
+  total_ingresos_hoy: number;
+  total_ingresos_semana: number;
+  total_ingresos_mes: number;
+  total_pendiente: number;
+  cantidad_pendientes: number;
+  ingresos_por_dia: { fecha: string; total: number }[];
+  distribucion_metodo_pago: { metodo_pago: string; cantidad: number; total: number }[];
 }

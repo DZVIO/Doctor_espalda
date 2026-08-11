@@ -3,28 +3,28 @@ import { ChevronDownIcon, ChevronUpIcon, PencilIcon, TrashIcon, PlusIcon } from 
 import { useApi } from '../../hooks/useApi';
 import { tratamientoService } from '../../services/tratamientos.service';
 import { medicamentoService } from '../../services/medicamentos.service';
-import { seguimientoService } from '../../services/seguimientos.service';
+import { sesionService } from '../../services/sesiones.service';
 import { SearchableSelect } from './SearchableSelect';
 import { formatDate } from '../../utils/dateUtils';
-import type { Seguimiento, DetalleSeguimiento, Tratamiento, Medicamento } from '../../types/models';
+import type { Sesion, DetalleSesion, Tratamiento, Medicamento } from '../../types/models';
 
 interface Props {
-  seguimientos: Seguimiento[];
+  sesiones: Sesion[];
   onRefresh: () => void;
   forceExpandId?: { id: number, signal: number } | null;
 }
 
-export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRefresh, forceExpandId }) => {
+export const SesionesAccordionTable: React.FC<Props> = ({ sesiones, onRefresh, forceExpandId }) => {
   const [tratamientos, setTratamientos] = useState<Tratamiento[]>([]);
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { request } = useApi();
 
-  const sortedSeguimientos = useMemo(() => {
+  const sortedSesiones = useMemo(() => {
     // Backend data is assumed to be in descending order by default
-    if (sortOrder === 'desc') return seguimientos;
-    return [...seguimientos].reverse();
-  }, [seguimientos, sortOrder]);
+    if (sortOrder === 'desc') return sesiones;
+    return [...sesiones].reverse();
+  }, [sesiones, sortOrder]);
 
   useEffect(() => {
     // Load active treatments and medications for the selects
@@ -38,10 +38,10 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
     });
   }, [request]);
 
-  if (!seguimientos || seguimientos.length === 0) {
+  if (!sesiones || sesiones.length === 0) {
     return (
       <div className="p-6 text-center text-sm text-gray-500 italic">
-        No hay historial de seguimientos registrados
+        No hay historial de sesiones registradas
       </div>
     );
   }
@@ -63,7 +63,7 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
                   <button
                     onClick={toggleSort}
                     className="p-1 hover:bg-gray-200 rounded transition-colors focus:outline-none"
-                    title={sortOrder === 'desc' ? 'Ver más antiguos primero' : 'Ver más recientes primero'}
+                    title={sortOrder === 'desc' ? 'Ver más antiguas primero' : 'Ver más recientes primero'}
                   >
                     {sortOrder === 'desc' ? (
                       <ChevronDownIcon className="h-4 w-4 text-blue-600" />
@@ -80,14 +80,14 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sortedSeguimientos.map((seg) => (
-              <SeguimientoRow 
-                key={seg.id} 
-                seguimiento={seg} 
+            {sortedSesiones.map((ses) => (
+              <SesionRow 
+                key={ses.id} 
+                sesion={ses} 
                 tratamientosList={tratamientos}
                 medicamentosList={medicamentos}
                 onRefresh={onRefresh} 
-                forceExpandSignal={forceExpandId?.id === seg.id ? forceExpandId?.signal : undefined}
+                forceExpandSignal={forceExpandId?.id === ses.id ? forceExpandId?.signal : undefined}
               />
             ))}
           </tbody>
@@ -98,14 +98,14 @@ export const SeguimientosAccordionTable: React.FC<Props> = ({ seguimientos, onRe
 };
 
 interface RowProps {
-  seguimiento: Seguimiento;
+  sesion: Sesion;
   tratamientosList: Tratamiento[];
   medicamentosList: Medicamento[];
   onRefresh: () => void;
   forceExpandSignal?: number;
 }
 
-const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, medicamentosList, onRefresh, forceExpandSignal }) => {
+const SesionRow: React.FC<RowProps> = ({ sesion, tratamientosList, medicamentosList, onRefresh, forceExpandSignal }) => {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { request, loading } = useApi();
@@ -125,12 +125,12 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
   }, [forceExpandSignal]);
   
   // Local state for editing details
-  const [editTratamientos, setEditTratamientos] = useState<Partial<DetalleSeguimiento>[]>([]);
-  const [editMedicamentos, setEditMedicamentos] = useState<Partial<DetalleSeguimiento>[]>([]);
+  const [editTratamientos, setEditTratamientos] = useState<Partial<DetalleSesion>[]>([]);
+  const [editMedicamentos, setEditMedicamentos] = useState<Partial<DetalleSesion>[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const tratamientos = seguimiento.detalles?.filter(d => d.id_tratamiento) || [];
-  const medicamentos = seguimiento.detalles?.filter(d => d.id_medicamento) || [];
+  const tratamientos = sesion.detalles?.filter(d => d.id_tratamiento) || [];
+  const medicamentos = sesion.detalles?.filter(d => d.id_medicamento) || [];
 
   const totalMedicamentos = medicamentos.reduce((sum, m) => sum + (m.cantidad || 0), 0);
 
@@ -150,13 +150,13 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
     setEditMedicamentos(medicamentos.map(d => ({ ...d })));
   };
 
-  const handleDeleteSeguimiento = async (e: React.MouseEvent) => {
+  const handleDeleteSesion = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!seguimiento.id) return;
+    if (!sesion.id) return;
     
-    if (window.confirm('¿Está seguro de eliminar todo el seguimiento? Esto restaurará el stock de los medicamentos.')) {
-      await request(seguimientoService.delete(seguimiento.id), {
-        successMessage: 'Seguimiento eliminado',
+    if (window.confirm('¿Está seguro de eliminar toda la sesión? Esto restaurará el stock de los medicamentos.')) {
+      await request(sesionService.delete(sesion.id), {
+        successMessage: 'Sesión eliminada',
         onSuccess: onRefresh
       });
     }
@@ -168,7 +168,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
   };
 
   const handleSaveEdit = async () => {
-    if (!seguimiento.id) return;
+    if (!sesion.id) return;
     setErrorMsg(null);
     
     try {
@@ -178,33 +178,33 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
       const validEdits = allEdits.filter(d => d.id_tratamiento || d.id_medicamento);
       
       // First, find what to delete
-      const currentIds = (seguimiento.detalles || []).map(d => d.id).filter(id => id);
+      const currentIds = (sesion.detalles || []).map(d => d.id).filter(id => id);
       const newIds = validEdits.map(d => d.id).filter(id => id);
       const toDelete = currentIds.filter(id => !newIds.includes(id));
       
       // Prevent deleting the only detail if new ones aren't being added
       if (validEdits.length === 0) {
-        setErrorMsg('Un seguimiento no puede quedar sin tratamientos ni medicamentos.');
+        setErrorMsg('Una sesión no puede quedar sin tratamientos ni medicamentos.');
         return;
       }
 
       // Execute deletes
       for (const id of toDelete) {
-        if (id) await seguimientoService.removeDetalle(seguimiento.id, id);
+        if (id) await sesionService.removeDetalle(sesion.id, id);
       }
 
       // Execute updates and creates
       for (const det of validEdits) {
         if (det.id) {
           // Update
-          const original = seguimiento.detalles?.find(d => d.id === det.id);
+          const original = sesion.detalles?.find(d => d.id === det.id);
           if (
             original && 
             (original.id_tratamiento !== det.id_tratamiento || 
              original.id_medicamento !== det.id_medicamento || 
              original.cantidad !== det.cantidad)
           ) {
-            await seguimientoService.updateDetalle(seguimiento.id, det.id, {
+            await sesionService.updateDetalle(sesion.id, det.id, {
               id_tratamiento: det.id_tratamiento,
               id_medicamento: det.id_medicamento,
               cantidad: det.cantidad
@@ -212,7 +212,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
           }
         } else {
           // Create
-          await seguimientoService.addDetalle(seguimiento.id, {
+          await sesionService.addDetalle(sesion.id, {
             id_tratamiento: det.id_tratamiento,
             id_medicamento: det.id_medicamento,
             cantidad: det.cantidad || 1
@@ -263,7 +263,7 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
           {expanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-          {formatDate(seguimiento.fecha)} <span className="text-gray-500 text-xs ml-2">{seguimiento.hora}</span>
+          {formatDate(sesion.fecha)} <span className="text-gray-500 text-xs ml-2">{sesion.hora}</span>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
@@ -276,22 +276,53 @@ const SeguimientoRow: React.FC<RowProps> = ({ seguimiento, tratamientosList, med
           </span>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-          ${seguimiento.total || '0.00'}
+          <div className="flex items-center space-x-2">
+            <span>${sesion.total || '0.00'}</span>
+            {(() => {
+              switch (sesion.estado_pago) {
+                case 'pagado':
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200">
+                      Pagado
+                    </span>
+                  );
+                case 'parcial':
+                  const pending = sesion.saldo_pendiente ? parseFloat(sesion.saldo_pendiente) : 0;
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={`Saldo pendiente: $${pending.toFixed(2)}`}>
+                      Parcial: ${pending.toFixed(0)}
+                    </span>
+                  );
+                case 'pendiente':
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      Pendiente
+                    </span>
+                  );
+                default:
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                      Sin pago
+                    </span>
+                  );
+              }
+            })()}
+          </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
           <button
             onClick={handleEditClick}
             disabled={isEditing}
             className={`text-blue-600 hover:text-blue-900 mr-4 ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Editar Seguimiento"
+            title="Editar Sesión"
           >
             <PencilIcon className="h-5 w-5 inline" />
           </button>
           <button
-            onClick={handleDeleteSeguimiento}
+            onClick={handleDeleteSesion}
             disabled={isEditing}
             className={`text-red-600 hover:text-red-900 ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Eliminar Seguimiento"
+            title="Eliminar Sesión"
           >
             <TrashIcon className="h-5 w-5 inline" />
           </button>

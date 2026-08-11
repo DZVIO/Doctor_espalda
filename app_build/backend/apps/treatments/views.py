@@ -8,9 +8,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 # pyrefly: ignore [missing-import]
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from .models import Tratamiento, Seguimiento, DetalleSeguimiento
-from .serializers import TratamientoSerializer, SeguimientoSerializer, DetalleSeguimientoSerializer
-from .services import TratamientoService, SeguimientoService, DetalleSeguimientoService
+from .models import Tratamiento, Sesion, DetalleSesion
+from .serializers import TratamientoSerializer, SesionSerializer, DetalleSesionSerializer
+from .services import TratamientoService, SesionService, DetalleSesionService
 
 
 class TratamientoViewSet(viewsets.ModelViewSet):
@@ -56,9 +56,9 @@ class TratamientoViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class SeguimientoViewSet(viewsets.ModelViewSet):
-    queryset = Seguimiento.objects.prefetch_related('detalles').all()
-    serializer_class = SeguimientoSerializer
+class SesionViewSet(viewsets.ModelViewSet):
+    queryset = Sesion.objects.prefetch_related('detalles').all()
+    serializer_class = SesionSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['id_paciente', 'fecha']
     ordering_fields = ['fecha', 'hora', 'created_at', 'total']
@@ -68,8 +68,8 @@ class SeguimientoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            seguimiento = SeguimientoService.create_seguimiento(serializer.validated_data)
-            output = self.get_serializer(seguimiento)
+            sesion = SesionService.create_sesion(serializer.validated_data)
+            output = self.get_serializer(sesion)
             return Response(output.data, status=status.HTTP_201_CREATED)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -79,8 +79,8 @@ class SeguimientoViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
         serializer.is_valid(raise_exception=True)
         try:
-            seguimiento = SeguimientoService.update_seguimiento(instance, serializer.validated_data)
-            output = self.get_serializer(seguimiento)
+            sesion = SesionService.update_sesion(instance, serializer.validated_data)
+            output = self.get_serializer(sesion)
             return Response(output.data)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -88,44 +88,44 @@ class SeguimientoViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         try:
-            SeguimientoService.delete_seguimiento(instance)
+            SesionService.delete_sesion(instance)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='detalles')
     def add_detalle(self, request, pk=None):
-        seguimiento = self.get_object()
-        serializer = DetalleSeguimientoSerializer(data=request.data)
+        sesion = self.get_object()
+        serializer = DetalleSesionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
-            detalle = DetalleSeguimientoService.create_detalle(seguimiento, serializer.validated_data)
-            output = DetalleSeguimientoSerializer(detalle)
+            detalle = DetalleSesionService.create_detalle(sesion, serializer.validated_data)
+            output = DetalleSesionSerializer(detalle)
             return Response(output.data, status=status.HTTP_201_CREATED)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['put', 'delete'], url_path=r'detalles/(?P<det_id>[^/.]+)')
     def manage_detalle(self, request, pk=None, det_id=None):
-        seguimiento = self.get_object()
+        sesion = self.get_object()
         try:
-            detalle = DetalleSeguimiento.objects.get(id=det_id, id_venta=seguimiento)
+            detalle = DetalleSesion.objects.get(id=det_id, id_sesion=sesion)
             
             if request.method == 'PUT':
                 # Use partial validation
-                serializer = DetalleSeguimientoSerializer(detalle, data=request.data, partial=True)
+                serializer = DetalleSesionSerializer(detalle, data=request.data, partial=True)
                 serializer.is_valid(raise_exception=True)
                 
-                updated_detalle = DetalleSeguimientoService.update_detalle(detalle, serializer.validated_data)
-                output = DetalleSeguimientoSerializer(updated_detalle)
+                updated_detalle = DetalleSesionService.update_detalle(detalle, serializer.validated_data)
+                output = DetalleSesionSerializer(updated_detalle)
                 return Response(output.data)
                 
             elif request.method == 'DELETE':
-                DetalleSeguimientoService.delete_detalle(detalle)
+                DetalleSesionService.delete_detalle(detalle)
                 return Response(status=status.HTTP_204_NO_CONTENT)
                 
-        except DetalleSeguimiento.DoesNotExist:
+        except DetalleSesion.DoesNotExist:
             return Response({"error": "Detalle no encontrado."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

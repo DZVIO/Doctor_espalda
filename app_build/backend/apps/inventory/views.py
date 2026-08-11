@@ -139,6 +139,6 @@ class MedicamentoViewSet(viewsets.ModelViewSet):
             return super().destroy(request, *args, **kwargs)
         except IntegrityError:
             return Response(
-                {"error": "No se puede eliminar este medicamento porque tiene seguimientos asociados."},
+                {"error": "No se puede eliminar este medicamento porque tiene sesiones asociadas."},
                 status=status.HTTP_400_BAD_REQUEST
             )

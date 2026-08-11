@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { seguimientoService } from '../../services/seguimientos.service';
+import { sesionService } from '../../services/sesiones.service';
 import { pacienteService } from '../../services/pacientes.service';
 import { tratamientoService } from '../../services/tratamientos.service';
 import { medicamentoService } from '../../services/medicamentos.service';
+import { contabilidadService } from '../../services/contabilidad.service';
 import { FormField } from '../../components/ui/FormField';
 import { LoadingButton } from '../../components/ui/LoadingButton';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { PaymentModal } from '../../components/ui/PaymentModal';
 import { useApi } from '../../hooks/useApi';
-import type { Paciente, Tratamiento, Medicamento } from '../../types/models';
+import type { Paciente, Tratamiento, Medicamento, Pago } from '../../types/models';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -34,7 +36,7 @@ type FormValues = {
   hora: string;
 };
 
-export const SeguimientoForm: React.FC = () => {
+export const SesionForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const initialPacienteId = location.state?.pacienteId || '';
@@ -69,6 +71,9 @@ export const SeguimientoForm: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  
+  // State for the payment modal
+  const [createdPago, setCreatedPago] = useState<Pago | null>(null);
 
   const { loading: loadingPaciente, request: fetchPaciente } = useApi();
   const { loading: loadingTrat, request: fetchTratamientos } = useApi();
@@ -211,32 +216,45 @@ export const SeguimientoForm: React.FC = () => {
     setSaveError(null);
 
     try {
-      // 1. Crear Seguimiento
-      const seguimientoPayload = {
+      // 1. Crear Sesion
+      const sesionPayload = {
         fecha: data.fecha,
         hora: data.hora,
         id_paciente: paciente!.id,
         id_agendamiento: citaId,
       };
-      const segCreado = await seguimientoService.create(seguimientoPayload);
-      const segId = segCreado.id!;
+      const sesCreado = await sesionService.create(sesionPayload);
+      const sesId = sesCreado.id!;
 
       // 2. Crear detalles de Tratamientos
       for (const f of filasTratamiento) {
-        await seguimientoService.addDetalle(segId, { id_tratamiento: f.id_tratamiento });
+        await sesionService.addDetalle(sesId, { id_tratamiento: f.id_tratamiento });
       }
 
       // 3. Crear detalles de Medicamentos
       for (const f of filasMedicamento) {
-        await seguimientoService.addDetalle(segId, { id_medicamento: f.id_medicamento, cantidad: f.cantidad });
+        await sesionService.addDetalle(sesId, { id_medicamento: f.id_medicamento, cantidad: f.cantidad });
       }
 
-      toast.success('Seguimiento registrado exitosamente.');
-      navigate(`/pacientes/${paciente!.id}`);
+      // 4. Obtener el pago creado automáticamente para mostrar el modal
+      try {
+        const pagosResp = await contabilidadService.getAll({ id_sesion: sesId });
+        if (pagosResp && pagosResp.length > 0) {
+          setCreatedPago(pagosResp[0]);
+          setIsSaving(false);
+          return; // Modal will handle navigation upon closing
+        }
+      } catch (err) {
+        console.error("Error al obtener el pago:", err);
+      }
+
+      // Fallback if payment could not be fetched
+      toast.success('Sesión registrada exitosamente.');
+      navigate(-1);
 
     } catch (err: any) {
       console.error(err);
-      setSaveError(err.response?.data?.error || err.message || "Error al guardar el seguimiento.");
+      setSaveError(err.response?.data?.error || err.message || "Error al guardar la sesión.");
     } finally {
       setIsSaving(false);
     }
@@ -257,7 +275,7 @@ export const SeguimientoForm: React.FC = () => {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Registrar Seguimiento</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Registrar Sesión</h1>
         <p className="text-sm text-gray-500">Agregue tratamientos y medicamentos de forma independiente.</p>
         
         {citaId && (
@@ -265,7 +283,7 @@ export const SeguimientoForm: React.FC = () => {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-blue-800">Cita Asociada</h3>
               <p className="mt-1 text-sm text-blue-600">
-                Este seguimiento quedará vinculado automáticamente a la cita del <strong>{citaFecha}</strong> a las <strong>{citaHora}</strong>.
+                Esta sesión quedará vinculada automáticamente a la cita del <strong>{citaFecha}</strong> a las <strong>{citaHora}</strong>.
               </p>
             </div>
           </div>
@@ -451,10 +469,26 @@ export const SeguimientoForm: React.FC = () => {
             Cancelar
           </button>
           <LoadingButton type="submit" loading={isSaving}>
-            Confirmar y Guardar Seguimiento
+            Confirmar y Guardar Sesión
           </LoadingButton>
         </div>
       </form>
+      
+      {/* Payment Modal that appears after saving successfully */}
+      {createdPago && (
+        <PaymentModal
+          pago={createdPago}
+          isOpen={true}
+          onClose={() => {
+            setCreatedPago(null);
+            navigate(-1);
+          }}
+          onSuccess={() => {
+            setCreatedPago(null);
+            navigate(-1);
+          }}
+        />
+      )}
     </div>
   </div>
   );

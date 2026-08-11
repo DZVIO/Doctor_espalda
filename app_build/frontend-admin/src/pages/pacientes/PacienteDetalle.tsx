@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { pacienteService } from '../../services/pacientes.service';
-import { seguimientoService } from '../../services/seguimientos.service';
+import { sesionService } from '../../services/sesiones.service';
 import { agendamientoService } from '../../services/agendamientos.service';
-import type { Paciente, Seguimiento, Agendamiento } from '../../types/models';
+import type { Paciente, Sesion, Agendamiento } from '../../types/models';
 import { Badge } from '../../components/ui/Badge';
 import { DataTable } from '../../components/ui/DataTable';
-import { SeguimientosAccordionTable } from '../../components/ui/SeguimientosAccordionTable';
+import { SesionesAccordionTable } from '../../components/ui/SesionesAccordionTable';
 import type { Column } from '../../components/ui/DataTable';
 import { useApi } from '../../hooks/useApi';
 import { formatDate } from '../../utils/dateUtils';
@@ -24,12 +24,12 @@ export const PacienteDetalle: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [paciente, setPaciente] = useState<Paciente | null>(null);
-  const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
+  const [sesiones, setSesiones] = useState<Sesion[]>([]);
   const [citas, setCitas] = useState<Agendamiento[]>([]);
-  const [expandedSeguimientoId, setExpandedSeguimientoId] = useState<{ id: number, signal: number } | null>(null);
+  const [expandedSesionId, setExpandedSesionId] = useState<{ id: number, signal: number } | null>(null);
 
   const { loading: fetchingPac, request: fetchPacRequest } = useApi();
-  const { request: fetchSegRequest } = useApi();
+  const { request: fetchSesRequest } = useApi();
   const { loading: fetchingCitas, request: fetchCitasRequest } = useApi();
 
   const fetchAllData = useCallback(() => {
@@ -40,51 +40,44 @@ export const PacienteDetalle: React.FC = () => {
       onSuccess: (data) => setPaciente(data),
     });
 
-    fetchSegRequest(seguimientoService.getAll({ id_paciente: pacId }), {
-      onSuccess: (data) => setSeguimientos(data),
+    fetchSesRequest(sesionService.getAll({ id_paciente: pacId }), {
+      onSuccess: (data) => setSesiones(data),
     });
 
     fetchCitasRequest(agendamientoService.getAll({ id_paciente: pacId }), {
       onSuccess: (data) => setCitas(data),
     });
-  }, [id, fetchPacRequest, fetchSegRequest, fetchCitasRequest]);
+  }, [id, fetchPacRequest, fetchSesRequest, fetchCitasRequest]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-
-  // const segColumns: Column<Seguimiento & { id: number }>[] = [
-  //   { header: 'Fecha', accessor: 'fecha' },
-  //   { header: 'Hora', accessor: 'hora' },
-  //   { header: 'Detalles', accessor: (s) => s.detalles?.length ? `${s.detalles.length} ítems` : 'Ninguno' },
-  //   { header: 'Total', accessor: (s) => `$${s.total || '0.00'}` },
-  // ];
 
   const citaColumns: Column<Agendamiento>[] = [
     { header: 'Fecha', accessor: (cita) => formatDate(cita.fecha), sortable: true },
     { header: 'Entrada', accessor: 'hora_ingreso' },
     { header: 'Salida', accessor: 'hora_salida' },
     {
-      header: 'Seguimiento',
+      header: 'Sesión',
       accessor: (cita) => {
-        if (!cita.seguimientos || cita.seguimientos.length === 0) {
+        if (!cita.sesiones || cita.sesiones.length === 0) {
           return (
             <button
-              onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
+              onClick={() => navigate('/sesiones/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
               className="px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium text-xs transition-colors border border-blue-200"
-              title="Registrar nuevo seguimiento para esta cita"
+              title="Registrar nueva sesión para esta cita"
             >
-              + Seguimiento
+              + Sesión
             </button>
           );
         }
         return (
           <div className="flex flex-wrap items-center">
-            {cita.seguimientos.map(s => (
-              <SeguimientoChip key={s.id} s={s} onClick={() => setExpandedSeguimientoId({ id: s.id, signal: Date.now() })} />
+            {cita.sesiones.map(s => (
+              <SesionChip key={s.id} s={s} onClick={() => setExpandedSesionId({ id: s.id, signal: Date.now() })} />
             ))}
-            <AddSeguimientoButton 
-              onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
+            <AddSesionButton
+              onClick={() => navigate('/sesiones/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
             />
           </div>
         );
@@ -151,7 +144,7 @@ export const PacienteDetalle: React.FC = () => {
                   title="Enviar WhatsApp"
                 >
                   <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
                   </svg>
                   WhatsApp
                 </a>
@@ -166,20 +159,20 @@ export const PacienteDetalle: React.FC = () => {
             <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
               <h2 className="text-lg font-semibold flex items-center">
                 <HistoryIcon className="h-5 w-5 mr-2 text-gray-400" />
-                Historial de Tratamientos (Seguimientos)
+                Historial de Sesiones
               </h2>
               <button
-                onClick={() => navigate('/seguimientos/nuevo', { state: { pacienteId: paciente.id } })}
+                onClick={() => navigate('/sesiones/nuevo', { state: { pacienteId: paciente.id } })}
                 className="text-sm font-medium text-blue-600 hover:text-blue-800"
               >
-                + Registrar Seguimiento
+                + Registrar Sesión
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <SeguimientosAccordionTable 
-                seguimientos={seguimientos} 
-                onRefresh={fetchAllData} 
-                forceExpandId={expandedSeguimientoId}
+              <SesionesAccordionTable
+                sesiones={sesiones}
+                onRefresh={fetchAllData}
+                forceExpandId={expandedSesionId}
               />
             </div>
           </div>
@@ -203,6 +196,7 @@ export const PacienteDetalle: React.FC = () => {
                 data={citas}
                 loading={fetchingCitas}
                 emptyMessage="No hay citas agendadas"
+                onRowClick={(cita) => navigate('/sesiones/nuevo', { state: { pacienteId: paciente?.id, citaId: cita.id, citaFecha: cita.fecha, citaHora: cita.hora_ingreso } })}
                 fillHeight
                 unstyled
               />
@@ -214,7 +208,7 @@ export const PacienteDetalle: React.FC = () => {
   );
 };
 
-const AddSeguimientoButton = ({ onClick }: { onClick: () => void }) => {
+const AddSesionButton = ({ onClick }: { onClick: () => void }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -243,11 +237,11 @@ const AddSeguimientoButton = ({ onClick }: { onClick: () => void }) => {
       </button>
 
       {showTooltip && createPortal(
-        <div 
+        <div
           className="absolute bg-gray-800 text-white text-[10px] px-2 py-1 rounded shadow-lg z-[9999] pointer-events-none transform -translate-x-1/2 whitespace-nowrap"
           style={{ top: tooltipPos.top, left: tooltipPos.left }}
         >
-          Agregar seguimiento
+          Agregar sesión
           {/* Arrow */}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
         </div>,
@@ -264,7 +258,7 @@ const HistoryIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
+const SesionChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const chipRef = useRef<HTMLDivElement>(null);
@@ -278,11 +272,11 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
     timeoutRef.current = setTimeout(() => {
       if (chipRef.current) {
         const rect = chipRef.current.getBoundingClientRect();
-        
+
         // Calculate center position horizontally
         let left = rect.left + window.scrollX + rect.width / 2;
         const tooltipWidth = 256; // 64 * 4px
-        
+
         // Adjust if near screen edges
         if (left - tooltipWidth / 2 < 10 + window.scrollX) {
           left = tooltipWidth / 2 + 10 + window.scrollX;
@@ -312,7 +306,7 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
   }, []);
 
   return (
-    <div 
+    <div
       ref={chipRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -327,10 +321,10 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
       </button>
 
       {showTooltip && createPortal(
-        <div 
+        <div
           className="absolute bg-gray-900 text-white text-xs rounded-lg p-3 z-[9999] shadow-xl pointer-events-none w-64 transform -translate-x-1/2 transition-opacity duration-200"
-          style={{ 
-            top: tooltipPos.top, 
+          style={{
+            top: tooltipPos.top,
             left: tooltipPos.left,
             animation: 'fadeIn 0.2s ease-out'
           }}
@@ -342,9 +336,9 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
             }
           `}</style>
           <div className="font-semibold text-sm border-b border-gray-700 pb-1 mb-2">
-            Seguimiento #{s.id} — {formatDate(s.fecha)}
+            Sesión #{s.id} — {formatDate(s.fecha)}
           </div>
-          
+
           {s.tratamientos && s.tratamientos.length > 0 && (
             <div className="mb-2">
               <span className="text-gray-400 font-medium block mb-1">Tratamientos:</span>
@@ -379,10 +373,10 @@ const SeguimientoChip = ({ s, onClick }: { s: any, onClick: () => void }) => {
           </div>
 
           {/* Arrow */}
-          <div 
+          <div
             className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"
-            style={{ 
-              left: `calc(50% + ${((chipRef.current?.getBoundingClientRect().left || 0) + window.scrollX + (chipRef.current?.getBoundingClientRect().width || 0) / 2) - tooltipPos.left}px)` 
+            style={{
+              left: `calc(50% + ${((chipRef.current?.getBoundingClientRect().left || 0) + window.scrollX + (chipRef.current?.getBoundingClientRect().width || 0) / 2) - tooltipPos.left}px)`
             }}
           ></div>
         </div>,

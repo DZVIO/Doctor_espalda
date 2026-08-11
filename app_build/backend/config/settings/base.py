@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'apps.dashboard',
     'apps.notifications',
     'apps.public_content',
+    'apps.contabilidad',
 ]
 
 MIDDLEWARE = [

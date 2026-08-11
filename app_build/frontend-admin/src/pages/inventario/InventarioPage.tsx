@@ -141,7 +141,7 @@ export const InventarioPage: React.FC = () => {
       >
         <p className="text-sm text-gray-500">
           ¿Estás seguro de que deseas eliminar el medicamento <span className="font-bold">{selectedMed?.nombre}</span>? 
-          Esta acción no se puede deshacer si no tiene seguimientos asociados.
+          Esta acción no se puede deshacer si no tiene sesiones asociadas.
         </p>
       </Modal>
     </div>

@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='Seguimiento',
+            name='Sesion',
             fields=[
                 ('id', models.BigAutoField(primary_key=True, serialize=False)),
                 ('fecha', models.DateField()),
@@ -39,26 +39,26 @@ class Migration(migrations.Migration):
                 ('total', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('id_agendamiento', models.ForeignKey(blank=True, db_column='id_agendamiento', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='seguimientos', to='appointments.agendamiento')),
+                ('id_agendamiento', models.ForeignKey(blank=True, db_column='id_agendamiento', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sesiones', to='appointments.agendamiento')),
                 ('id_paciente', models.ForeignKey(db_column='id_paciente', on_delete=django.db.models.deletion.RESTRICT, to='patients.paciente')),
             ],
             options={
-                'db_table': 'seguimiento',
+                'db_table': 'sesion',
             },
         ),
         migrations.CreateModel(
-            name='DetalleSeguimiento',
+            name='DetalleSesion',
             fields=[
                 ('id', models.BigAutoField(primary_key=True, serialize=False)),
                 ('cantidad', models.PositiveIntegerField(default=1)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('id_medicamento', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='inventory.medicamento')),
-                ('id_venta', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='detalles', to='treatments.seguimiento')),
+                ('id_sesion', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='detalles', to='treatments.sesion')),
                 ('id_tratamiento', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.RESTRICT, to='treatments.tratamiento')),
             ],
             options={
-                'db_table': 'detalle_seguimiento',
+                'db_table': 'detalle_sesion',
             },
         ),
     ]

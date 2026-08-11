@@ -135,7 +135,7 @@ export const PacientesPage: React.FC = () => {
       >
         <p className="text-sm text-gray-500">
           ¿Estás seguro de que deseas eliminar al paciente <span className="font-bold">{selectedPac?.nombre} {selectedPac?.apellido}</span>? 
-          Esta acción es irreversible y solo se permite si no tiene citas o seguimientos asociados.
+          Esta acción es irreversible y solo se permite si no tiene citas o sesiones asociadas.
         </p>
       </Modal>
     </div>

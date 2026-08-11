@@ -8,7 +8,8 @@ import {
   ArchiveBoxIcon,
   ArrowLeftOnRectangleIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -44,6 +45,7 @@ const navigation: NavItem[] = [
       },
     ]
   },
+  { name: 'Contabilidad', href: '/contabilidad', icon: BanknotesIcon, exact: false },
 ];
 
 const NavItemRenderer: React.FC<{ item: NavItem; depth?: number }> = ({ item, depth = 0 }) => {

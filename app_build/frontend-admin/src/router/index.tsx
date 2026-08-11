@@ -22,7 +22,8 @@ import { PacienteForm } from '../pages/pacientes/PacienteForm';
 import { PacienteDetalle } from '../pages/pacientes/PacienteDetalle';
 import { CitasPage } from '../pages/citas/CitasPage';
 import { CitaForm } from '../pages/citas/CitaForm';
-import { SeguimientoForm } from '../pages/seguimientos/SeguimientoForm';
+import { SesionForm } from '../pages/sesiones/SesionForm';
+import { ContabilidadPage } from '../pages/contabilidad/ContabilidadPage';
 
 export const router = createBrowserRouter([
   {
@@ -87,8 +88,12 @@ export const router = createBrowserRouter([
             ]
           },
           {
-            path: 'seguimientos/nuevo',
-            element: <SeguimientoForm />
+            path: 'sesiones/nuevo',
+            element: <SesionForm />
+          },
+          {
+            path: 'contabilidad',
+            element: <ContabilidadPage />
           }
         ],
       },
